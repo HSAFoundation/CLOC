@@ -1,0 +1,61 @@
+HT_DEPTH = $(COMPONENT_DEPTH)/..
+include $(HT_DEPTH)/htdefs
+
+MYPERL=$(DK_ROOT)/perl/5.16.1/bin/perl -I "$(DK_ROOT)/perl/5.16.1/lib"
+
+ifeq ($(BUILD_HSA_TARGET),yes)
+DIST_INCLUDE_TARGETS = Brig.h Brig_new.hpp hsail_c.h
+DIST_LIB_TARGETS = $(LIB_TARGET)$(LIB_EXT)
+endif
+
+LIB_TARGET = LIBHSAIL
+
+vpath %.cpp $(COMPONENT_DEPTH)
+
+CPPFLAGS += -Wno-deprecated
+
+ifdef ATI_OS_LINUX
+    GCXXOPTS := $(filter-out -fno-exceptions,$(GCXXOPTS))
+endif
+
+CPPFILES := $(notdir $(wildcard $(COMPONENT_DEPTH)/*.cpp))
+
+PRE_TARGETS = $(GENFILES)
+
+GENFILES = \
+	$(BUILD_DIR)/HSAILBrigStaticChecks_gen.hpp \
+	$(BUILD_DIR)/HSAILBrigValidation_gen.hpp \
+	$(BUILD_DIR)/HSAILBrigProps_gen.hpp \
+	$(BUILD_DIR)/HSAILBrigPropsAcc_gen.hpp \
+	$(BUILD_DIR)/HSAILBrigPropsFastAcc_gen.hpp \
+	$(BUILD_DIR)/HSAILBrigPropsName_gen.hpp \
+	$(BUILD_DIR)/HSAILBrigPropsVisitor_gen.hpp \
+	$(BUILD_DIR)/HSAILBrigInstUtils_gen.hpp \
+	$(BUILD_DIR)/HSAILBrigUtilities_gen.hpp \
+	$(BUILD_DIR)/HSAILInitBrig_gen.hpp \
+	$(BUILD_DIR)/HSAILItems_gen.hpp \
+	$(BUILD_DIR)/HSAILParserUtilities_gen.hpp \
+	$(BUILD_DIR)/HSAILScannerRules_gen.re2c \
+	$(BUILD_DIR)/HSAILScannerUtilities_gen.hpp \
+	$(BUILD_DIR)/HSAILTemplateUtilities_gen.hpp \
+	$(BUILD_DIR)/HSAILVisitItems_gen.hpp \
+	$(BUILD_DIR)/HSAILScannerRules_gen_re2c.hpp \
+	$(BUILD_DIR)/HSAILInstValidation_gen.hpp \
+	$(BUILD_DIR)/HSAILItemUtils_gen.hpp
+
+GENINPUTS = $(COMPONENT_DEPTH)/HDLProcessor.pl \
+	$(COMPONENT_DEPTH)/HSAILBrigInstr.hdl \
+	$(COMPONENT_DEPTH)/generate.pl \
+	$(COMPONENT_DEPTH)/Brig_new.hpp \
+	$(COMPONENT_DEPTH)/HSAILScannerRules.re2c
+
+$(BUILD_DIR)/generate-stamp: $(GENINPUTS)
+	@$(MAKENOISE) "Generating libHSAIL source files ..."
+	$(VNOISE)$(MKDIR) $(dir $@)
+	$(VNOISE)$(RM) -f $@.tmp && $(TOUCH) $@.tmp
+	$(NONOISE)$(MYPERL) $(COMPONENT_DEPTH)/generate.pl --dk=$(DK_ROOT) $(COMPONENT_DEPTH) $(dir $@)
+	$(VNOISE)$(MV) -f $@.tmp $@
+
+$(GENFILES): $(BUILD_DIR)/generate-stamp
+
+include $(HT_DEPTH)/htrules
