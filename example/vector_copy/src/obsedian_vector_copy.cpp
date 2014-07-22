@@ -183,16 +183,20 @@ int main(int argc, char **argv)
 		uint64_t arg0;
 		uint64_t arg1;
 		uint64_t arg2;
-		void* arg3;
-		void* arg4;
-		uint32_t arg5;
+        uint64_t arg3;
+        uint64_t arg4;
+        uint64_t arg5;
+		void* arg6;
+		void* arg7;
 	} args;
 	args.arg0=0;
 	args.arg1=0;
 	args.arg2=0;
-	args.arg3=out;
-	args.arg4=in;
-	args.arg5=1024*1024;
+    args.arg3=0;
+    args.arg4=0;
+    args.arg5=0;
+	args.arg6=out;
+	args.arg7=in;
 	
 	//Bind kernel arguments and kernel code
 	aql.kernel_object_address=hsaCodeDescriptor->code.handle;
