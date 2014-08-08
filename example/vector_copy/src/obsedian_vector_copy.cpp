@@ -3,9 +3,9 @@
 #include "string.h"
 #include "hsa.h"
 #include "hsa_ext_finalize.h"
-#include "hsa_ext_private_amd.h"
-#include "assemble.h"
+#include "Brig_new.hpp"
 #include "elf_utils.hpp"
+#include <iostream>
 
 #define MULTILINE(...) # __VA_ARGS__
 
@@ -17,15 +17,11 @@
 #endif
 #endif
 
-inline void ErrorCheck(hsa_status_t err)
-{
-	if(err!=HSA_STATUS_SUCCESS)
-	{
-		printf("HSA reported error!\n");
-		exit(0);
-	}
-}
+#define CommonLog(msg) printf( "[ ERROR ] In %s() in line %d ", __FUNCTION__ , __LINE__);
 
+#define ErrorCheck(status) if (status != HSA_STATUS_SUCCESS) { \
+  CommonLog(msg) \
+}
 static hsa_status_t IterateAgent(hsa_agent_t agent, void *data) {
 	// Find GPU device and use it.
 	if (data == NULL) {
@@ -43,25 +39,54 @@ static hsa_status_t IterateAgent(hsa_agent_t agent, void *data) {
 	return HSA_STATUS_SUCCESS;
 }
 
-static hsa_status_t IterateRegion(hsa_region_t region, void *data) {
-	// Find system memory region.
-		if (data == NULL) {
-			return HSA_STATUS_ERROR_INVALID_ARGUMENT;
-		}
+size_t roundUp(size_t size, size_t round_value) {
+  size_t times = size / round_value;
+  size_t rem = size % round_value;
+  if (rem != 0) ++times;
+  return times * round_value;
+}
+static hsa_status_t get_kernarg(hsa_region_t region, void* data) {
+    hsa_region_flag_t flags;
+    hsa_region_get_info(region, HSA_REGION_INFO_FLAGS, &flags);
+    if (flags & HSA_REGION_FLAG_KERNARG) {
+        hsa_region_t* ret = (hsa_region_t*) data;
+        *ret = region;
+        return HSA_STATUS_SUCCESS;
+    }
+    return HSA_STATUS_SUCCESS;
+}
+bool FindSymbolOffset(hsa_ext_brig_module_t* brig_module, 
+    char* symbol_name,
+    hsa_ext_brig_code_section_offset32_t& offset) {
+    
+    //Get the data section
+     hsa_ext_brig_section_header_t* data_section_header = 
+                brig_module->section[HSA_EXT_BRIG_SECTION_DATA];
+    //Get the code section
+     hsa_ext_brig_section_header_t* code_section_header =
+             brig_module->section[HSA_EXT_BRIG_SECTION_CODE];
 
-		bool is_host = false;
-		hsa_status_t stat =
-			hsa_region_get_info(
-			region, (hsa_region_info_t)HSA_EXT_REGION_INFO_HOST_ACCESS, &is_host);
-		if (stat != HSA_STATUS_SUCCESS) {
-			return stat;
-		}
+    //First entry into the BRIG code section
+    BrigCodeOffset32_t code_offset = code_section_header->header_byte_count;
+    BrigBase* code_entry = (BrigBase*) ((char*)code_section_header + code_offset);
+    while (code_offset != code_section_header->byte_count) {
+        if (code_entry->kind == BRIG_KIND_DIRECTIVE_KERNEL) {
+            //Now find the data in the data section
+            BrigDirectiveKernel* directive_kernel = (BrigDirectiveKernel*) (code_entry);
+            BrigDataOffsetString32_t data_name_offset = directive_kernel->name;
+            BrigData* data_entry = (BrigData*)((char*) data_section_header + data_name_offset);
+            if (!strcmp(symbol_name, (char*)data_entry->bytes)){
+                offset = code_offset;
+                return true;
+            }
 
-		if (is_host) {
-			*((hsa_region_t *)data) = region;
-		}
-		return HSA_STATUS_SUCCESS;
-	}
+        }
+        code_offset += code_entry->byteCount;
+        code_entry = (BrigBase*) ((char*)code_section_header + code_offset);
+    }
+    return false;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -71,8 +96,9 @@ int main(int argc, char **argv)
 	err=hsa_init();
 	ErrorCheck(err);
 
-	//Get GPU device
+	//Get the device
 	hsa_agent_t device = 0;
+    //Iterate over the agents and pick the agent using IterateAgent
 	err = hsa_iterate_agents(IterateAgent, &device);
 	ErrorCheck(err);
 
@@ -88,11 +114,12 @@ int main(int argc, char **argv)
 	ErrorCheck(err);
 	printf("Using: %s\n", name);
 
-	//Get queue size
+	//Find the maximum size of the queue
 	uint32_t queue_size = 0;
 	err = hsa_agent_get_info(device, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_size);
 	ErrorCheck(err);
 
+    //Create a queue
 	hsa_queue_t* commandQueue;
 	err =
 		hsa_queue_create(
@@ -101,8 +128,8 @@ int main(int argc, char **argv)
 
 	//Convert hsail kernel text to BRIG.
 	hsa_ext_brig_module_t* brigModule;
-    std::string file_name("vector_copy.brig");
-	if (!CreateBrigModuleFromBrigFile(file_name.c_str(), &brigModule)){
+    char file_name[128] = "vector_copy.brig";
+	if (!CreateBrigModuleFromBrigFile(file_name, &brigModule)){
 		ErrorCheck(HSA_STATUS_ERROR);
 	}
 
@@ -117,14 +144,11 @@ int main(int argc, char **argv)
 	ErrorCheck(err);
 
 	// Construct finalization request list.
-	// @todo kzhuravl 6/16/2014 remove bare numbers, we actually need to find
-	// entry offset into the code section.
 	hsa_ext_finalization_request_t finalization_request_list;
 	finalization_request_list.module = module;              // module handle.
-	finalization_request_list.symbol = 192;                 // entry offset into the code section.
 	finalization_request_list.program_call_convention = 0;  // program call convention. not supported.
-
-	if (!FindSymbolOffset(brigModule, "&__OpenCL_test_kernel", KERNEL_SYMBOLS, finalization_request_list.symbol)){
+    char kernel_name[128] = "&__OpenCL_test_kernel";
+	if (!FindSymbolOffset(brigModule, kernel_name, finalization_request_list.symbol)){
 		ErrorCheck(HSA_STATUS_ERROR);
 	}
 
@@ -166,9 +190,6 @@ int main(int argc, char **argv)
 	char* in=(char*)malloc(1024*1024*4);
 	char* out=(char*)malloc(1024*1024*4);
 
-	//printf("%p\n", in);
-	//printf("%p\n", out);
-
 	memset(out, 0, 1024*1024*4);
 	memset(in, 1, 1024*1024*4);
 
@@ -177,7 +198,6 @@ int main(int argc, char **argv)
 	err=hsa_memory_register(out, 1024*1024*4);
 	ErrorCheck(err);
 
-	//hsaKernelArgs<void(uint, uint, uint, void*, void*, uint64)> args;
 	struct ALIGNED_(HSA_ARGUMENT_ALIGN_BYTES) args_t
 	{
 		uint64_t arg0;
@@ -197,10 +217,29 @@ int main(int argc, char **argv)
     args.arg5=0;
 	args.arg6=out;
 	args.arg7=in;
-	
+
+    hsa_region_t kernarg_region = 0;
+    hsa_agent_iterate_regions(device, get_kernarg, &kernarg_region);
+    if (!kernarg_region) {
+        printf ("Could not find region for kernel arguments \n");
+    }
+    void* kernel_arg_buffer = NULL;
+   
+   
+   /* Start Temporary work around since hsa_memory_allocate does not round up - Not required in alpha*/
+    size_t granule;
+    hsa_region_get_info(kernarg_region, HSA_REGION_INFO_ALLOC_GRANULE,  &granule);
+    size_t kernel_arg_buffer_size = roundUp(hsaCodeDescriptor->kernarg_segment_byte_size, granule);
+    /* End Temporary work around */
+   
+   
+   err = hsa_memory_allocate(kernarg_region, kernel_arg_buffer_size, 
+                        &kernel_arg_buffer);
+    ErrorCheck(err);
+	memcpy (kernel_arg_buffer, &args, sizeof(args));
 	//Bind kernel arguments and kernel code
 	aql.kernel_object_address=hsaCodeDescriptor->code.handle;
-	aql.kernarg_address=(uint64_t)&args;
+	aql.kernarg_address=(uint64_t)kernel_arg_buffer;
 
 	//Register argument buffer
 	hsa_memory_register(&args, sizeof(args_t));
@@ -208,24 +247,20 @@ int main(int argc, char **argv)
 	const uint32_t queueSize=commandQueue->size;
 	const uint32_t queueMask=queueSize-1;
 
-	//write to command queue
-	//for(int i=0; i<1000; i++)
+	uint64_t index=hsa_queue_load_write_index_relaxed(commandQueue);
+	((hsa_dispatch_packet_t*)(commandQueue->base_address))[index&queueMask]=aql;
+	hsa_queue_store_write_index_relaxed(commandQueue, index+1);
+
+	//Ringdoor bell - Dispatch the kernel
+	hsa_signal_store_relaxed(commandQueue->doorbell_signal, index+1);
+
+    if (hsa_signal_wait_acquire(signal, HSA_LT, 1, uint64_t(-1), HSA_WAIT_EXPECTANCY_UNKNOWN)!=0)
 	{
-		uint64_t index=hsa_queue_load_write_index_relaxed(commandQueue);
-		((hsa_dispatch_packet_t*)(commandQueue->base_address))[index&queueMask]=aql;
-		hsa_queue_store_write_index_relaxed(commandQueue, index+1);
-
-		//Ringdoor bell
-		hsa_signal_store_relaxed(commandQueue->doorbell_signal, index+1);
-
-        if (hsa_signal_wait_acquire(signal, HSA_LT, 1, uint64_t(-1), HSA_WAIT_EXPECTANCY_UNKNOWN)!=0)
-		{
-			printf("Signal wait returned unexpected value\n");
-			exit(0);
-		}
+		printf("Signal wait returned unexpected value\n");
+		exit(0);
+	}
 
 		hsa_signal_store_relaxed(signal, 1);
-	}
 
 	//Validate
 	bool valid=true;

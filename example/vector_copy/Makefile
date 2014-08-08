@@ -17,7 +17,7 @@ OBJ_FILES := $(addprefix obj/, $(notdir $(CPP_FILES:.cpp=.o)))
 all: vector_copy vector_copy.brig
 
 vector_copy: $(OBJ_FILES)
-	$(CC) $(LFLAGS) $(OBJ_FILES) $(LIBHSAIL_PATH)/$(BUILD_DIR)/libhsail.a -lelf -L$(LIB_PATH) -lhsa-runtime64 -o vector_copy
+	$(CC) $(LFLAGS) $(OBJ_FILES) -lelf -L$(LIB_PATH) -lhsa-runtime64 -o vector_copy
 
 vector_copy.brig :
 	./cloc vector_copy.cl
