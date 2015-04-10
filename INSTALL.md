@@ -140,7 +140,7 @@ cd ~/git/deb
 wget https://bitbucket.org/multicoreware/cppamp-driver-ng/downloads/clamp-0.5.0-hsa-milestone4-Linux.deb
 wget https://bitbucket.org/multicoreware/cppamp-driver-ng/downloads/libcxxamp-0.5.0-hsa-milestone4-Linux.deb
 wget https://bitbucket.org/multicoreware/cppamp-driver-ng/downloads/clamp-bolt-1.2.0-hsa-milestone4-Linux.deb
-wget https://bitbucket.org/multicoreware/cppamp-driver-ng/downloads/boost_1_55_0-hsa-milestone3.deb
+wget https://bitbucket.org/multicoreware/cppamp-driver-ng/downloads/boost_1_55_0-hsa-milestone3.tar.gz
 sudo dpkg -i *.deb
 ```
 
