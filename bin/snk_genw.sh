@@ -118,7 +118,6 @@ function write_header_template(){
 #endif
 #ifndef __SNK_DEFS
 #define SNK_MAX_STREAMS 8 
-#define SNK_MAX_TASKS 100001
 extern _CPPSTRING_ void stream_sync(const int stream_num);
 
 #define SNK_ORDERED 1
@@ -144,12 +143,10 @@ struct snk_lparm_s {
    int barrier;               /* default = SNK_UNORDERED */
    int acquire_fence_scope;   /* default = 2 */
    int release_fence_scope;   /* default = 2 */
-   snk_task_t *requires ;     /* Linked list of required parent tasks, default = NULL  */
-   snk_task_t *needs ;        /* Linked list of parent tasks where only one must complete, default=NULL */
 } ;
 
 /* This string macro is used to declare launch parameters set default values  */
-#define SNK_INIT_LPARM(X,Y) snk_lparm_t * X ; snk_lparm_t  _ ## X ={.ndim=1,.gdims={Y},.ldims={64},.stream=-1,.barrier=SNK_UNORDERED,.acquire_fence_scope=2,.release_fence_scope=2,.requires=NULL,.needs=NULL} ; X = &_ ## X ;
+#define SNK_INIT_LPARM(X,Y) snk_lparm_t * X ; snk_lparm_t  _ ## X ={.ndim=1,.gdims={Y},.ldims={64},.stream=-1,.barrier=SNK_UNORDERED,.acquire_fence_scope=2,.release_fence_scope=2} ; X = &_ ## X ;
  
 /* Equivalent host data types for kernel data types */
 typedef struct snk_image3d_s snk_image3d_t;
@@ -329,11 +326,9 @@ static hsa_status_t get_kernarg_memory_region(hsa_region_t region, void* data) {
 
 /* Stream specific globals */
 hsa_queue_t* Stream_CommandQ[SNK_MAX_STREAMS];
-snk_task_t   SNK_Tasks[SNK_MAX_TASKS];
 static int          SNK_NextTaskId = 0 ;
 
 /* Context(cl file) specific globals */
-hsa_ext_module_t*                _CN__BrigModule;
 hsa_agent_t                      _CN__Agent;
 hsa_ext_program_t                _CN__HsaProgram;
 hsa_executable_t                 _CN__Executable;
@@ -367,10 +362,7 @@ status_t _CN__InitContext(){
     uint32_t queue_size = 0;
     err = hsa_agent_get_info(_CN__Agent, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_size);
     ErrorCheck(Querying the agent maximum queue size, err);
-    /* printf("The maximum queue size is %u.\n", (unsigned int) queue_size); */
-
-    /* Load the BRIG binary.  */
-    _CN__BrigModule = (hsa_ext_module_t*) &_CN__HSA_BrigMem;
+    /* printf("The maximum queue size is %u.\n", (unsigned int) queue_size);  */
 
     /* Create hsa program.  */
     memset(&_CN__HsaProgram,0,sizeof(hsa_ext_program_t));
@@ -378,7 +370,7 @@ status_t _CN__InitContext(){
     ErrorCheck(Create the program, err);
 
     /* Add the BRIG module to hsa program.  */
-    err = hsa_ext_program_add_module(_CN__HsaProgram, _CN__BrigModule);
+    err = hsa_ext_program_add_module(_CN__HsaProgram, (hsa_ext_module_t) _CN__HSA_BrigMem );
     ErrorCheck(Adding the brig module to the program, err);
 
     /* Determine the agents ISA.  */
@@ -422,14 +414,6 @@ status_t _CN__InitContext(){
     /*  Create signal to wait for the dispatch to finish. this Signal is only used for synchronous execution  */ 
     err=hsa_signal_create(1, 0, NULL, &Sync_Signal);
     ErrorCheck(Creating a HSA signal, err);
-
-    int task_num;
-    /* Initialize all preallocated tasks and signals */
-    for ( task_num = 0 ; task_num < SNK_MAX_TASKS; task_num++){
-       SNK_Tasks[task_num].next = NULL;
-       err=hsa_signal_create(1, 0, NULL, &(SNK_Tasks[task_num].signal));
-       ErrorCheck(Creating a HSA signal, err);
-    }
 
     /* Create queues and signals for each stream. */
     int stream_num;
@@ -533,29 +517,6 @@ function write_kernel_template(){
        this_Q = Stream_CommandQ[stream_num];
     }
 
-    if ( lparm->requires != NULL) {
-       /* For dependent child tasks, wait till all parent kernels are finished.  */
-	   /* FIXME: To use multiple barrier AND packets or individual waiting for better performance? 
-	      KPS benchmark showed that barrier AND was a lot slower, but will keep both implementations
-		  for future use */
-	   #if 1
-	   #if 0
-	   barrier_sync(stream_num, lparm->requires);
-	   #else
-	   snk_task_t *p = lparm->requires;
-	   while(p != NULL) {
-       	hsa_signal_value_t value = hsa_signal_wait_acquire(p->signal, HSA_SIGNAL_CONDITION_LT, 1, UINT64_MAX, HSA_WAIT_STATE_BLOCKED);
-       	// HSA manual uses a while loop. Why? 
-		// while(hsa_signal_wait_acquire(p->signal, HSA_SIGNAL_CONDITION_EQ, 0, UINT64_MAX, HSA_WAIT_STATE_ACTIVE) != 0);
-		p = p->next;
-	   }
-	   #endif
-	   #endif
-    }
-    if ( lparm->needs != NULL) {
-       printf("\n THIS TASK NEEDS ONE OF A LIST OF PARENTS TO COMPLETE BEFORE THIS TASK STARTS \n\n");
-    }
-
     /*  Obtain the current queue write index. increases with each call to kernel  */
     uint64_t index = hsa_queue_load_write_index_relaxed(this_Q);
     /* printf("DEBUG:Call #%d to kernel \"%s\" \n",(int) index,"_KN_");  */
@@ -565,16 +526,6 @@ function write_kernel_template(){
     hsa_kernel_dispatch_packet_t* this_aql = &(((hsa_kernel_dispatch_packet_t*)(this_Q->base_address))[index&queueMask]);
 
     /*  FIXME: We need to check for queue overflow here. */
-
-    /* If this kernel was declared as snk_task_t*, then use preallocated signal */
-    if ( needs_return_task == 1) {
-        if ( SNK_NextTaskId == SNK_MAX_TASKS ) {
-           printf("ERROR:  Too many parent tasks, increase SNK_MAX_TASKS =%d\n",SNK_MAX_TASKS);
-           return ;
-        }
-        /* hsa_signal_store_relaxed(SNK_Tasks[SNK_NextTaskId].signal,1); */
-        this_aql->completion_signal = SNK_Tasks[SNK_NextTaskId].signal;
-    }
 
     if ( stream_num < 0 ) {
        /* Use the global synchrnous signal Sync_Signal */
@@ -948,24 +899,11 @@ __SEDCMD=" "
          fi
       fi
 
-#     Make sure template knows when to allocate and bind a global signal for this function
-      if [ $__KT == "snk_task_t*" ] ; then 
-         echo "   int needs_return_task = 1;" >>$__CWRAP
-      else
-         echo "   int needs_return_task = 0;" >>$__CWRAP
-      fi
-
 #     Now add the kernel template to wrapper and change all three strings
 #     1) Context Name _CN_ 2) Kerneel name _KN_ and 3) Funtion name _FN_
       write_kernel_template | sed -e "s/_CN_/${__SN}/g;s/_KN_/${__KN}/g;s/_FN_/${__FN}/g" >>$__CWRAP
 
-#     if kernel is type snk_task_t*, then return &parentTask else return void 
-# FIXME: Need to rotate and reuse the task array!
-      if [ $__KT == "snk_task_t*" ] ; then 
-         echo "    return (snk_task_t*) &(SNK_Tasks[SNK_NextTaskId++]);" >> $__CWRAP 
-      else
-         echo "    return;" >> $__CWRAP 
-      fi 
+      echo "    return;" >> $__CWRAP 
       echo "} " >> $__CWRAP 
       echo "/* ------  End of SNACK function ${__KN} ------ */ " >> $__CWRAP 
 
