@@ -1,5 +1,5 @@
-Cloc 0.9 Install Instructions
-=============================
+Cloc 0.9.1 Install Instructions
+===============================
 
 Warning.  These instructions are for HSA 1.0F .
 
@@ -112,7 +112,7 @@ sudo dpkg -i hsa-runtime_1.0_amd64.deb
 As of Cloc version 0.9 the cl frontend clc2 and supporting LLVM 3.6 executables are stored in the same directory as the cloc.sh, snack.sh and snk_genw.sh shell scripts.  These scripts need to be copied should be copied into /opt/amd/cloc/bin
 ```
 cd ~/git
-git clone -b CLOC-0.9 https://github.com/HSAfoundation/CLOC.git
+git clone -b master https://github.com/HSAfoundation/CLOC.git
 # Install
 mkdir -p /opt/amd/cloc
 sudo cp -rp ~/git/CLOC/bin /opt/amd/cloc

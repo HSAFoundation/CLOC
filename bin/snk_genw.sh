@@ -329,18 +329,18 @@ hsa_queue_t* Stream_CommandQ[SNK_MAX_STREAMS];
 static int          SNK_NextTaskId = 0 ;
 
 /* Context(cl file) specific globals */
-hsa_agent_t                      _CN__Agent;
-hsa_ext_program_t                _CN__HsaProgram;
-hsa_executable_t                 _CN__Executable;
-hsa_region_t                     _CN__KernargRegion;
-int                              _CN__FC = 0; 
+hsa_agent_t                      __CN__Agent;
+hsa_ext_program_t                __CN__HsaProgram;
+hsa_executable_t                 __CN__Executable;
+hsa_region_t                     __CN__KernargRegion;
+int                              __CN__FC = 0; 
 
 /* Global variables */
 hsa_queue_t*                     Sync_CommandQ;
 hsa_signal_t                     Sync_Signal; 
 #include "_CN__brig.h" 
 
-status_t _CN__InitContext(){
+status_t __CN__InitContext(){
 
     hsa_status_t err;
 
@@ -348,67 +348,67 @@ status_t _CN__InitContext(){
     ErrorCheck(Initializing the hsa runtime, err);
 
     /* Iterate over the agents and pick the gpu agent */
-    err = hsa_iterate_agents(get_gpu_agent, &_CN__Agent);
+    err = hsa_iterate_agents(get_gpu_agent, &__CN__Agent);
     if(err == HSA_STATUS_INFO_BREAK) { err = HSA_STATUS_SUCCESS; }
     ErrorCheck(Getting a gpu agent, err);
 
     /* Query the name of the agent.  */
     char name[64] = { 0 };
-    err = hsa_agent_get_info(_CN__Agent, HSA_AGENT_INFO_NAME, name);
+    err = hsa_agent_get_info(__CN__Agent, HSA_AGENT_INFO_NAME, name);
     ErrorCheck(Querying the agent name, err);
     /* printf("The agent name is %s.\n", name); */
 
     /* Query the maximum size of the queue.  */
     uint32_t queue_size = 0;
-    err = hsa_agent_get_info(_CN__Agent, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_size);
+    err = hsa_agent_get_info(__CN__Agent, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_size);
     ErrorCheck(Querying the agent maximum queue size, err);
     /* printf("The maximum queue size is %u.\n", (unsigned int) queue_size);  */
 
     /* Create hsa program.  */
-    memset(&_CN__HsaProgram,0,sizeof(hsa_ext_program_t));
-    err = hsa_ext_program_create(HSA_MACHINE_MODEL_LARGE, HSA_PROFILE_FULL, HSA_DEFAULT_FLOAT_ROUNDING_MODE_DEFAULT, NULL, &_CN__HsaProgram);
+    memset(&__CN__HsaProgram,0,sizeof(hsa_ext_program_t));
+    err = hsa_ext_program_create(HSA_MACHINE_MODEL_LARGE, HSA_PROFILE_FULL, HSA_DEFAULT_FLOAT_ROUNDING_MODE_DEFAULT, NULL, &__CN__HsaProgram);
     ErrorCheck(Create the program, err);
 
     /* Add the BRIG module to hsa program.  */
-    err = hsa_ext_program_add_module(_CN__HsaProgram, (hsa_ext_module_t) _CN__HSA_BrigMem );
+    err = hsa_ext_program_add_module(__CN__HsaProgram, (hsa_ext_module_t) __CN__HSA_BrigMem );
     ErrorCheck(Adding the brig module to the program, err);
 
     /* Determine the agents ISA.  */
     hsa_isa_t isa;
-    err = hsa_agent_get_info(_CN__Agent, HSA_AGENT_INFO_ISA, &isa);
+    err = hsa_agent_get_info(__CN__Agent, HSA_AGENT_INFO_ISA, &isa);
     ErrorCheck(Query the agents isa, err);
 
     /* * Finalize the program and extract the code object.  */
     hsa_ext_control_directives_t control_directives;
     memset(&control_directives, 0, sizeof(hsa_ext_control_directives_t));
     hsa_code_object_t code_object;
-    err = hsa_ext_program_finalize(_CN__HsaProgram, isa, 0, control_directives, "", HSA_CODE_OBJECT_TYPE_PROGRAM, &code_object);
+    err = hsa_ext_program_finalize(__CN__HsaProgram, isa, 0, control_directives, "", HSA_CODE_OBJECT_TYPE_PROGRAM, &code_object);
     ErrorCheck(Finalizing the program, err);
 
     /* Destroy the program, it is no longer needed.  */
-    err=hsa_ext_program_destroy(_CN__HsaProgram);
+    err=hsa_ext_program_destroy(__CN__HsaProgram);
     ErrorCheck(Destroying the program, err);
 
     /* Create the empty executable.  */
-    err = hsa_executable_create(HSA_PROFILE_FULL, HSA_EXECUTABLE_STATE_UNFROZEN, "", &_CN__Executable);
+    err = hsa_executable_create(HSA_PROFILE_FULL, HSA_EXECUTABLE_STATE_UNFROZEN, "", &__CN__Executable);
     ErrorCheck(Create the executable, err);
 
     /* Load the code object.  */
-    err = hsa_executable_load_code_object(_CN__Executable, _CN__Agent, code_object, "");
+    err = hsa_executable_load_code_object(__CN__Executable, __CN__Agent, code_object, "");
     ErrorCheck(Loading the code object, err);
 
     /* Freeze the executable; it can now be queried for symbols.  */
-    err = hsa_executable_freeze(_CN__Executable, "");
+    err = hsa_executable_freeze(__CN__Executable, "");
     ErrorCheck(Freeze the executable, err);
 
     /* Find a memory region that supports kernel arguments.  */
-    _CN__KernargRegion.handle=(uint64_t)-1;
-    hsa_agent_iterate_regions(_CN__Agent, get_kernarg_memory_region, &_CN__KernargRegion);
-    err = (_CN__KernargRegion.handle == (uint64_t)-1) ? HSA_STATUS_ERROR : HSA_STATUS_SUCCESS;
+    __CN__KernargRegion.handle=(uint64_t)-1;
+    hsa_agent_iterate_regions(__CN__Agent, get_kernarg_memory_region, &__CN__KernargRegion);
+    err = (__CN__KernargRegion.handle == (uint64_t)-1) ? HSA_STATUS_ERROR : HSA_STATUS_SUCCESS;
     ErrorCheck(Finding a kernarg memory region, err);
 
     /*  Create a queue using the maximum size.  */
-    err = hsa_queue_create(_CN__Agent, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &Sync_CommandQ);
+    err = hsa_queue_create(__CN__Agent, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &Sync_CommandQ);
     ErrorCheck(Creating the queue, err);
 
     /*  Create signal to wait for the dispatch to finish. this Signal is only used for synchronous execution  */ 
@@ -419,7 +419,7 @@ status_t _CN__InitContext(){
     int stream_num;
     for ( stream_num = 0 ; stream_num < SNK_MAX_STREAMS ; stream_num++){
        /* printf("calling queue create for stream %d\n",stream_num); */
-       err=hsa_queue_create(_CN__Agent, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &Stream_CommandQ[stream_num]);
+       err=hsa_queue_create(__CN__Agent, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &Stream_CommandQ[stream_num]);
        ErrorCheck(Creating the Stream Command Q, err);
     }
 
@@ -435,7 +435,7 @@ function write_KernelStatics_template(){
 /* Kernel specific globals, one set for each kernel  */
 hsa_executable_symbol_t          _KN__Symbol;
 int                              _KN__FK = 0 ; 
-status_t                         _KN__init();
+status_t                         _KN__init(const int printStats);
 status_t                         _KN__stop();
 uint64_t                         _KN__Kernel_Object;
 uint32_t                         _KN__Kernarg_Segment_Size; /* May not need to be global */
@@ -447,19 +447,19 @@ EOF
 
 function write_InitKernel_template(){
 /bin/cat <<"EOF"
-extern status_t _KN__init(){
-
-    if (_CN__FC == 0 ) {
-       status_t status = _CN__InitContext();
+#include "amd_kernel_code.h"
+extern status_t _KN__init(const int printStats){
+    if (__CN__FC == 0 ) {
+       status_t status = __CN__InitContext();
        if ( status  != STATUS_SUCCESS ) return; 
-       _CN__FC = 1;
+       __CN__FC = 1;
     }
    
     hsa_status_t err;
 
     /* Extract the symbol from the executable.  */
     /* printf("Kernel name _KN__: Looking for symbol %s\n","__OpenCL__KN__kernel"); */
-    err = hsa_executable_get_symbol(_CN__Executable, NULL, "&__OpenCL__KN__kernel", _CN__Agent , 0, &_KN__Symbol);
+    err = hsa_executable_get_symbol(__CN__Executable, NULL, "&__OpenCL__KN__kernel", __CN__Agent , 0, &_KN__Symbol);
     ErrorCheck(Extract the symbol from the executable, err);
 
     /* Extract dispatch information from the symbol */
@@ -472,6 +472,22 @@ extern status_t _KN__init(){
     err = hsa_executable_symbol_get_info(_KN__Symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_PRIVATE_SEGMENT_SIZE, &_KN__Private_Segment_Size);
     ErrorCheck(Extracting the private segment from the executable, err);
 
+    if (printStats == 1) {
+       printf("Post-finalization statistics for kernel: _KN_ \n" );
+       amd_kernel_code_t *akc = (amd_kernel_code_t*) _KN__Kernel_Object;
+       printf("   wavefront_sgpr_count: ");
+       printf("%u\n", (uint32_t) akc->wavefront_sgpr_count);
+       printf("   workitem_vgpr_count: ");
+       printf("%u\n", (uint32_t) akc->workitem_vgpr_count);
+       printf("   workgroup_fbarrier_count: ");
+       printf("%u\n", (uint32_t) akc->workgroup_fbarrier_count);
+       printf("   local data store bytes: ");
+       printf("%u\n", (uint32_t) _KN__Group_Segment_Size);
+       printf("   private store bytes : ");
+       printf("%u\n", (uint32_t) _KN__Private_Segment_Size);
+       printf("   kernel arguments bytes: ");
+       printf("%u\n", (uint32_t) _KN__Kernarg_Segment_Size);
+    }
 
     return STATUS_SUCCESS;
 
@@ -480,11 +496,11 @@ extern status_t _KN__init(){
 
 extern status_t _KN__stop(){
     status_t err;
-    if (_CN__FC == 0 ) {
+    if (__CN__FC == 0 ) {
        /* weird, but we cannot stop unless we initialized the context */
-       err = _CN__InitContext();
+       err = __CN__InitContext();
        if ( err != STATUS_SUCCESS ) return err; 
-       _CN__FC = 1;
+       __CN__FC = 1;
     }
     if ( _KN__FK == 1 ) {
         /*  Currently nothing kernel specific must be recovered */
@@ -558,7 +574,7 @@ function write_kernel_template(){
     this_aql->kernarg_address = (void*) thisKernargAddress;
     this_aql->kernel_object = _KN__Kernel_Object;
     this_aql->private_segment_size = _KN__Private_Segment_Size;
-    this_aql->group_segment_size = _KN__Group_Segment_Size;
+    this_aql->group_segment_size = group_base; /* group_base includes static and dynamic group space */
 
     /*  Prepare and set the packet header */ 
     /* Only set barrier bit if asynchrnous execution */
@@ -615,7 +631,7 @@ fi
 
 
 function is_scalar() {
-    scalartypes="int,float,char,double,void,size_t,image3d_t"
+    scalartypes="int,float,char,double,void,size_t,image3d_t,long,long long"
     local stype
     IFS=","
     for stype in $scalartypes ; do 
@@ -629,11 +645,10 @@ function is_scalar() {
 function parse_arg() {
    arg_name=`echo $1 | awk '{print $NF}'`
    arg_type=`echo $1 | awk '{$NF=""}1' | sed 's/ *$//'`
+   
    if [ "${arg_type:0:7}" == "__local" ] ; then   
       is_local=1
-#     arg_type=${arg_type:8}
-      arg_type="size_t"
-      arg_name="${arg_name}_size"
+      arg_type="${arg_type:8}"
    else
       is_local=0
    fi
@@ -643,6 +658,7 @@ function parse_arg() {
    simple_arg_type=`echo $arg_type | awk '{print $NF}' | sed 's/\*//'`
 #  Drop keyword restrict from argument in host callable c function
    if [ "${simple_arg_type}" == "restrict" ] ; then 
+      arg_type=${arg_type%% restrict*}
       arg_type=${arg_type%%restrict*}
       simple_arg_type=`echo $arg_type | awk '{print $NF}' | sed 's/\*//'`
    fi
@@ -666,7 +682,7 @@ function parse_arg() {
       simple_arg_type="int"
       arg_type="unsigned short int${__lc}"
    fi
-#   echo "arg_name:$arg_name arg_type:$arg_type  simple_arg_type:$simple_arg_type"
+#  echo "arg_name:$arg_name arg_type:$arg_type  simple_arg_type:$simple_arg_type"
 }
 
 #  snk_genw starts here
@@ -688,6 +704,13 @@ __IS_FORTRAN=$8
 
 # If snack was called with -noglobs
 __NO_GLOB_FUNS=$9
+
+# If snack was called with -kstats
+__KSTATS=${10}
+if [ "$__KSTATS" == "1" ] ; then 
+   __KSTATSF=${__TMPD}/kstats.c
+   echo "int main(int argc, char*argv[]){" > $__KSTATSF
+fi
 
 # Intermediate files.
 __EXTRACL=${__TMPD}/extra.cl
@@ -766,6 +789,12 @@ __SEDCMD=" "
       IFS=","
       for _val in $__ARGL ; do 
          parse_arg $_val
+         if [ $is_local == 1 ] ; then 
+            arg_type="size_t"
+            simple_arg_type="size_t"
+            arg_name="${arg_name}_size"
+            last_char=" "
+         fi
          __CFN_ARGL="${__CFN_ARGL}${sepchar}${simple_arg_type}${last_char} ${arg_name}"
          __PROTO_ARGL="${__PROTO_ARGL}${sepchar}${arg_type} ${arg_name}"
          sepchar=","
@@ -786,7 +815,7 @@ __SEDCMD=" "
  
 	  echo "   /* Kernel initialization has to be done before kernel arguments are set/inspected */ " >> $__CWRAP
       echo "   if (${__KN}_FK == 0 ) { " >> $__CWRAP
-      echo "     status_t status = ${__KN}_init(); " >> $__CWRAP
+      echo "     status_t status = ${__KN}_init(0); " >> $__CWRAP
       echo "     if ( status  != STATUS_SUCCESS ) return; " >> $__CWRAP
       echo "     ${__KN}_FK = 1; " >> $__CWRAP
       echo "   } " >> $__CWRAP
@@ -800,6 +829,8 @@ __SEDCMD=" "
 	  echo "   thisKernargAddress = malloc(${__KN}_Kernarg_Segment_Size); " >> $__CWRAP
 	  #echo "   hsa_memory_allocate(${__SN}_KernargRegion, ${__KN}_Kernarg_Segment_Size, &thisKernargAddress); " >> $__CWRAP
 #     How to map a structure into an malloced memory area?
+      echo "   size_t group_base ; " >>$__CWRAP
+      echo "   group_base  = (size_t) ${__KN}_Group_Segment_Size;" >>$__CWRAP
       echo "   struct ${__KN}_args_struct {" >> $__CWRAP
       NEXTI=0
       if [ $GENW_ADD_DUMMY ] ; then 
@@ -815,7 +846,11 @@ __SEDCMD=" "
       for _val in $__ARGL ; do 
          parse_arg $_val
          if [ "$last_char" == "*" ] ; then 
-            echo "      ${simple_arg_type}* arg${NEXTI};"  >> $__CWRAP
+            if [ $is_local == 1 ] ; then 
+               echo "      uint64_t arg${NEXTI};"  >> $__CWRAP
+            else
+               echo "      ${simple_arg_type}* arg${NEXTI};"  >> $__CWRAP
+            fi
          else
             is_scalar $simple_arg_type
             if [ $? == 1 ] ; then 
@@ -858,7 +893,12 @@ __SEDCMD=" "
          if [ "$last_char" == "*" ] ; then 
             arglistw="${arglistw}${sepchar}${arg_type} ${arg_name}"
             calllist="${calllist}${sepchar}${arg_name}"
-            echo "   ${__KN}_args->arg${NEXTI} = $arg_name ; "  >> $__CWRAP
+            if [ $is_local == 1 ] ; then 
+               echo "   ${__KN}_args->arg${NEXTI} = (uint64_t) group_base ; "  >> $__CWRAP
+               echo "   group_base += ( sizeof($simple_arg_type) * ${arg_name}_size ) ; "  >> $__CWRAP
+            else
+               echo "   ${__KN}_args->arg${NEXTI} = $arg_name ; "  >> $__CWRAP
+            fi
          else
             is_scalar $simple_arg_type
             if [ $? == 1 ] ; then 
@@ -897,6 +937,11 @@ __SEDCMD=" "
          else
             echo "extern _CPPSTRING_ $__KT ${__KN}($__PROTO_ARGL, const snk_lparm_t * lparm);" >>$__HDRF
          fi
+         echo "extern _CPPSTRING_ $__KT ${__KN}_init(const int printStats);" >>$__HDRF
+      fi
+
+      if [ "$__KSTATS" == "1" ] ; then 
+         echo "${__KN}_init(1);" >>$__KSTATSF
       fi
 
 #     Now add the kernel template to wrapper and change all three strings
@@ -916,6 +961,11 @@ __SEDCMD=" "
 
    if [ "$__IS_FORTRAN" == "1" ] ; then 
       write_fortran_lparm_t
+   fi
+
+#  Terminate the kstats main program
+   if [ "$__KSTATS" == "1" ] ; then 
+      echo "}" >>$__KSTATSF
    fi
 
 #  Write the updated CL

@@ -1,4 +1,4 @@
-CLOC - V 0.9.0 (HSA 1.0F) 
+CLOC - V 0.9.1 (HSA 1.0F) 
 =========================
 
 CLOC:  CL Offline Compiler
@@ -123,6 +123,7 @@ Software License Agreement.
     -k        Keep temporary files
     -fort     Generate fortran function names
     -noglobs  Do not generate global functions 
+    -kstats   Print out kernel statistics (post finalization)
     -str      Depricated, create .o file needed for okra
 
    Options with values:
@@ -134,6 +135,7 @@ Software License Agreement.
                              <sdir> is actual directory of snack.sh 
     -rp       <HSA RT path>  Default=$HSA_RUNTIME_PATH or /opt/hsa
     -o        <outfilename>  Default=<filename>.<ft> 
+    -hsaillib <hsail filename>  
 
    Examples:
     snack.sh my.cl              /* create my.snackwrap.c and my.h    */

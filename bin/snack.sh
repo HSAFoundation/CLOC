@@ -23,7 +23,7 @@
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #  Maintained by Shreyas Ramalingam Shreyas.Ramalingam@amd.com
 #
-PROGVERSION=0.9.0
+PROGVERSION=0.9.1
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -85,6 +85,7 @@ function usage(){
     -k        Keep temporary files
     -fort     Generate fortran function names
     -noglobs  Do not generate global functions 
+    -kstats   Print out kernel statistics (post finalization)
     -str      Depricated, create .o file needed for okra
 
    Options with values:
@@ -96,6 +97,7 @@ function usage(){
                              <sdir> is actual directory of snack.sh 
     -rp       <HSA RT path>  Default=$HSA_RUNTIME_PATH or /opt/hsa
     -o        <outfilename>  Default=<filename>.<ft> 
+    -hsaillib <hsail filename>  
 
    Examples:
     snack.sh my.cl              /* create my.snackwrap.c and my.h    */
@@ -161,6 +163,7 @@ while [ $# -gt 0 ] ; do
       -c) 		MAKEOBJ=true;;  
       -fort) 		FORTRAN=1;;  
       -noglobs)  	NOGLOBFUNS=1;;  
+      -kstats)  	KSTATS=1;;  
       -str) 		MAKESTR=true;; 
       -hsail) 		GEN_IL=true;; 
       -opt) 		LLVMOPT=$2; shift ;; 
@@ -168,6 +171,7 @@ while [ $# -gt 0 ] ; do
       -s) 		SYMBOLNAME=$2; shift ;; 
       -o) 		OUTFILE=$2; shift ;; 
       -t) 		TMPDIR=$2; shift ;; 
+      -hsaillib)        HSAILLIB=$2; shift ;; 
       -p)               HSA_LLVM_PATH=$2; shift ;;
       -rp)              HSA_RUNTIME_PATH=$2; shift ;;
       -h) 		usage ;; 
@@ -214,6 +218,7 @@ CMD_BRI=${CMD_BRI:-hsailasm }
 
 FORTRAN=${FORTRAN:-0};
 NOGLOBFUNS=${NOGLOBFUNS:-0};
+KSTATS=${KSTATS:-0};
 
 RUNDATE=`date`
 
@@ -250,6 +255,13 @@ if [ $MAKEOBJ ] && [ ! -f $HSA_RUNTIME_PATH/include/hsa.h ] ; then
    echo "ERROR:  Missing $HSA_RUNTIME_PATH/include/hsa.h"
    echo "        snack.sh requires HSA includes"
    exit $DEADRC
+fi
+
+if [ "$HSAILLIB" != "" ] ; then 
+   if [ ! -f $HSAILLIB ] ; then 
+      echo "ERROR:  The HSAIL file $HSAILLIB does not exist."
+      exit $DEADRC
+   fi
 fi
 
 # Parse LASTARG for directory, filename, and symbolname
@@ -417,13 +429,13 @@ else
 #  Not step 2, do normal steps
    [ $VERBOSE ] && echo "#Step:  genw  		cl --> $FNAME.snackwrap.c + $FNAME.h ..."
    if [ $DRYRUN ] ; then
-      echo "$HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS" 
+      echo "$HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS"
    else
-      $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS
+      $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS
       rc=$?
       if [ $rc != 0 ] ; then 
          echo "ERROR:  The following command failed with return code $rc."
-         echo "        $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS"
+         echo "        $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS"
          do_err $rc
       fi
    fi
@@ -448,6 +460,9 @@ else
       fi
       if [ $GEN_IL ] ; then 
          cp $TMPDIR/updated.hsail $OUTDIR/$FNAME.hsail
+         if [ "$HSAILLIB" != "" ] ; then 
+            cat $HSAILLIB >> $OUTDIR/$FNAME.hsail
+         fi
       fi
    fi
    BRIGDIR=$TMPDIR
@@ -491,12 +506,44 @@ if [ $MAKESTR ] ; then
 
 else
 
+if [ "$HSAILLIB" != "" ] ; then 
+   # disassemble brig $BRIGDIR/$BRIGNAME to composite.hsail
+   [ $VERBOSE ] && echo "#Step:  Add HSAIL		brig --> hsail+hsaillib --> $BRIGHFILE ..."
+   if [ $DRYRUN ] ; then
+      echo $HSA_LLVM_PATH/$CMD_BRI -disassemble -o $TMPDIR/composite.hsail $BRIGDIR/$BRIGNAME
+   else
+      $HSA_LLVM_PATH/$CMD_BRI -disassemble -o $TMPDIR/composite.hsail $BRIGDIR/$BRIGNAME
+   fi
+ 
+   # Add $HSAILLIB to file 
+   if [ $DRYRUN ] ; then
+      echo cat $HSAILLIB >> $TMPDIR/composite.hsail
+   else
+      cat $HSAILLIB >> $TMPDIR/composite.hsail
+   fi
+
+   # assemble complete hsail file to brig $BRIGDIR/$BRIGNAME
+   if [ $DRYRUN ] ; then
+      echo $HSA_LLVM_PATH/$CMD_BRI -o $BRIGDIR/$BRIGNAME $TMPDIR/composite.hsail
+      rc=0
+   else
+      $HSA_LLVM_PATH/$CMD_BRI -o $BRIGDIR/$BRIGNAME $TMPDIR/composite.hsail
+      rc=$?
+   fi
+   if [ $rc != 0 ] ; then 
+      echo "ERROR:  HSAIL assembly of HSAILLIB failed with return code $rc. Command was:"
+      echo "        $HSA_LLVM_PATH/$CMD_BRI -o $BRIGDIR/$BRIGNAME $TMPDIR/composite.hsail"
+      do_err $rc
+   fi
+  
+fi
+
 #   Not depricated option -str 
 [ $VERBOSE ] && echo "#Step:  hexdump		brig --> $BRIGHFILE ..."
 if [ $DRYRUN ] ; then
    echo "hexdump -v -e '""0x"" 1/1 ""%02X"" "",""' $BRIGDIR/$BRIGNAME "
 else
-   echo "char ${SYMBOLNAME}_HSA_BrigMem[] = {" > $FULLBRIGHFILE
+   echo "char _${SYMBOLNAME}_HSA_BrigMem[] = {" > $FULLBRIGHFILE
    hexdump -v -e '"0x" 1/1 "%02X" ","' $BRIGDIR/$BRIGNAME >> $FULLBRIGHFILE
    rc=$?
    if [ $rc != 0 ] ; then 
@@ -504,23 +551,29 @@ else
       exit $rc
    fi
    echo "};" >> $FULLBRIGHFILE
-   echo "size_t ${SYMBOLNAME}_HSA_BrigMemSz = sizeof(${SYMBOLNAME}_HSA_BrigMem);" >> $FULLBRIGHFILE
+   echo "size_t _${SYMBOLNAME}_HSA_BrigMemSz = sizeof(_${SYMBOLNAME}_HSA_BrigMem);" >> $FULLBRIGHFILE
 fi
 
 
 if [ $MAKEOBJ ] ; then 
    [ $VERBOSE ] && echo "#Step:  gcc		snackwrap.c + _brig.h --> $OUTFILE  ..."
    if [ $DRYRUN ] ; then
-      echo "$CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_RUNTIME_PATH/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
+      echo "$CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RUNTIME_PATH/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
    else
-      $CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_RUNTIME_PATH/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE
+      $CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RUNTIME_PATH/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE
       rc=$?
       if [ $rc != 0 ] ; then 
          echo "ERROR:  The following command failed with return code $rc."
-         echo "        $CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_RUNTIME_PATH/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
-        do_err $rc
+         echo "        $CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RUNTIME_PATH/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
+         do_err $rc
       fi
    fi
+   if [ $KSTATS == 1 ] ; then 
+      export LD_LIBRARY_PATH=$HSA_RUNTIME_PATH/lib
+      $CMD_GCC -o $TMPDIR/kstats -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RUNTIME_PATH/include $OUTDIR/$OUTFILE $TMPDIR/kstats.c -L$HSA_RUNTIME_PATH/lib -lhsa-runtime64 
+      $TMPDIR/kstats
+   fi 
+
 fi
 
 # end of NOT -str

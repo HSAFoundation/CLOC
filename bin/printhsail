@@ -32,6 +32,7 @@ cloc_brigsym="HSA_BrigMem"
 cloc_brigszsym="HSA_BrigMemSz"
 kalmar_brigsym="_binary_kernel_brig_start"
 kalmar_brigszsym="_binary_kernel_brig_size"
+gcc_brigsect=".brig"
 
 cdir=$(getdname $0)
 [ ! -L "$cdir/cloc.sh" ] || cdir=$(getdname `readlink "$cdir/cloc.sh"`)
@@ -57,25 +58,68 @@ if [ "$format" == "ELF 64-bit" ] ; then
          # no cloc brig symbol , looking for kalmar
          brigszhex=`nm $infile | grep $kalmar_brigszsym | cut -d" " -f1 ` 
          if [ "$brigszhex" == "" ] ; then 
-            echo "ERROR:  No hsa_code section or HSAIL data in input elf file \"$1\" "
-            exit 1
-         else 
+            brigloc=`readelf -S -W $infile | grep $gcc_brigsect | awk '{print $5}'` 
+            if [ "$brigloc" == "" ] ; then 
+               echo "ERROR:  No brig found in the binary of input elf file \"$1\" "
+               exit 1
+            else
+               # gcc brig section found 
+               brigszhex=`readelf -S -W $infile | grep $gcc_brigsect | awk '{print $6}'` 
+               brigsz=$((0x$brigszhex))
+               brigoff=$((0x$brigloc))
+               dd if=$infile of=$tmpfile bs=1 count=$brigsz skip=$brigoff >/dev/null 2>/dev/null
+               brigfile=$tmpfile
+               $HSAIL_DISASSEMBLE -disassemble $brigfile -o $tmpfile.hsail
+               rc=$?  
+            fi
+         else
+            # Kalmar brigszsym found
             datastart=`readelf -S $infile | grep "\.data\.rel\.ro" | awk '{print $5}'`
             relstart=`readelf -S $infile | grep "\.data\.rel\.ro" | awk '{print $4}'`
             brigloc=`nm $infile | grep $kalmar_brigsym | grep -v $kalmar_brigszsym | cut -d" " -f1 ` 
+            brigoff=$((0x$datastart + 0x$brigloc - 0x$relstart))
+            brigsz=$((0x$brigszhex))
+            #  Create the brig file by extracting the binary out of the applicaton elf
+            dd if=$infile of=$tmpfile bs=1 count=$brigsz skip=$brigoff >/dev/null 2>/dev/null
+            brigfile=$tmpfile
+            $HSAIL_DISASSEMBLE -disassemble $brigfile -o $tmpfile.hsail
+            rc=$?  
          fi
       else
+         # cloc can have multiple brigs 
          datastart=`readelf -S $infile | grep "\.data" | awk '{print $5}'`
          relstart=`readelf -S $infile | grep "\.data" | awk '{print $4}'`
-         brigloc=`nm $infile | grep $cloc_brigsym | grep -v $cloc_brigszsym | cut -d" " -f1 ` 
-         brigszoff=$((0x$datastart + 0x$brigszloc - 0x$relstart))
-         brigszhex=`od -N2 -w2 -j $brigszoff -t x2 -An $infile | awk '{print $1}'` 
+         brigname_list=`nm $infile | grep $cloc_brigsym | grep -v $cloc_brigszsym | cut -d" " -f3 ` 
+         touch ${tmpfile}.hsail
+         for brigname in `echo $brigname_list` ; do
+            brigloc=`nm $infile | grep $brigname | grep -v $cloc_brigszsym | cut -d" " -f1 ` 
+            brigszloc=`nm $infile | grep ${brigname}Sz | cut -d" " -f1 ` 
+            brigszoff=$((0x$datastart + 0x$brigszloc - 0x$relstart))
+            brigszhex=`od -N2 -w2 -j $brigszoff -t x2 -An $infile | awk '{print $1}'` 
+            brigoff=$((0x$datastart + 0x$brigloc - 0x$relstart))
+            brigsz=$((0x$brigszhex))
+            if [ -f $tmpfile ] ; then 
+               rm $tmpfile
+            fi
+            if [ -f ${tmpfile}.hsail1 ] ; then 
+               rm ${tmpfile}.hsail1
+            fi
+            echo "     "  >&2
+            echo "==========  Extracting BRIG AND HSAIL for brigname $brigname =================" >&2
+            dd if=$infile of=$tmpfile bs=1 count=$brigsz skip=$brigoff >/dev/null 2>/dev/null
+            echo "==========  Converting BRIG to HSAIL for brigname $brigname =================" >&2
+            $HSAIL_DISASSEMBLE -disassemble $tmpfile -o ${tmpfile}.hsail1
+            rc=$?
+            echo "==========  Done with brigname $brigname =======================" >&2
+            if [ $rc == 0 ] ; then 
+               cat $tmpfile.hsail1 >> ${tmpfile}.hsail
+            fi
+         done
+         echo "     "  >&2
+         if [ -f $tmpfile.hsail1 ] ; then 
+            rm $tmpfile.hsail1
+         fi
       fi
-      brigoff=$((0x$datastart + 0x$brigloc - 0x$relstart))
-      brigsz=$((0x$brigszhex))
-      #  Create the brig file by extracting the binary out of the applicaton elf
-      dd if=$infile of=$tmpfile bs=1 count=$brigsz skip=$brigoff >/dev/null 2>/dev/null
-      brigfile=$tmpfile
    else 
       # extract sections and convert to 32bit elf, ignore empty section warning
       #objcopy  -S -j hsa_data -j hsa_code -j hsa_operand -O elf32-little $infile $tmpfile
@@ -83,6 +127,8 @@ if [ "$format" == "ELF 64-bit" ] ; then
       # Need to zero this byte to get hsailasm to thing this is a real brig file
       printf '\x00\' | dd of=$tmpfile bs=1 seek=16 count=1 conv=notrunc >/dev/null 2>/dev/null
       brigfile=$tmpfile
+      $HSAIL_DISASSEMBLE -disassemble $brigfile -o $tmpfile.hsail
+      rc=$?
    fi
 elif [ "$format" == "ELF 32-bit" ] ; then 
 #  Just assume a 32-bit ELF is a brig file so no need to extract or zap byte 16.
@@ -92,14 +138,13 @@ elif [ "$format" == "ELF 32-bit" ] ; then
       exit 1
    fi
    brigfile=$infile
+   $HSAIL_DISASSEMBLE -disassemble $brigfile -o $tmpfile.hsail
+   rc=$?
 else
    echo "ERROR:  Input file \"$1\" must be ELF 64-bit or brig file"
    exit 1
 fi
 
-#  Disassemble the brig file
-$HSAIL_DISASSEMBLE -disassemble $brigfile -o $tmpfile.hsail
-rc=$?
 if [ $rc != 0 ] ; then 
    exit $rc
 fi
