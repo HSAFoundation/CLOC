@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
            Here we show how to initialize the kernel. It is not really 
            needed but it will make the first call go slightly faster. 
         */
-        decode_init();
+        decode_init(0);
 
         SNK_INIT_LPARM(lparm,strlength);
 	decode(input,output,lparm);

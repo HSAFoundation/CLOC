@@ -38,7 +38,7 @@ cdir=$(getdname $0)
 [ ! -L "$cdir/cloc.sh" ] || cdir=$(getdname `readlink "$cdir/cloc.sh"`)
 HSA_LLVM_PATH=${HSA_LLVM_PATH:-$cdir}
 
-HSAIL_DISASSEMBLE=${HSAIL_DISASSEMBLE:-$HSA_LLVM_PATH/hsailasm}
+HSAIL_DISASSEMBLE=${HSAIL_DISASSEMBLE:-$HSA_LLVM_PATH/HSAILasm}
 
 if [ ! -f "$infile" ] ; then 
    echo "ERROR:  Input file \"$1\" does not exist "
@@ -124,7 +124,7 @@ if [ "$format" == "ELF 64-bit" ] ; then
       # extract sections and convert to 32bit elf, ignore empty section warning
       #objcopy  -S -j hsa_data -j hsa_code -j hsa_operand -O elf32-little $infile $tmpfile
       objcopy --no-change-warnings -j hsa_data -j hsa_code -j hsa_operand -O elf32-little $infile $tmpfile 2>/dev/null
-      # Need to zero this byte to get hsailasm to thing this is a real brig file
+      # Need to zero this byte to get HSAILasm to thing this is a real brig file
       printf '\x00\' | dd of=$tmpfile bs=1 seek=16 count=1 conv=notrunc >/dev/null 2>/dev/null
       brigfile=$tmpfile
       $HSAIL_DISASSEMBLE -disassemble $brigfile -o $tmpfile.hsail

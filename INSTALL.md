@@ -1,4 +1,4 @@
-Cloc 0.9.1 Install Instructions
+Cloc 0.9.2 Install Instructions
 ===============================
 
 Warning.  These instructions are for HSA 1.0F .

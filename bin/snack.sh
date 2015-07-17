@@ -21,9 +21,8 @@
 #         snack github repository.  
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
-#  Maintained by Shreyas Ramalingam Shreyas.Ramalingam@amd.com
 #
-PROGVERSION=0.9.1
+PROGVERSION=0.9.2
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -214,7 +213,7 @@ HSA_LLVM_PATH=${HSA_LLVM_PATH:-$sdir}
 GCCOPT=${GCCOPT:-3}
 LLVMOPT=${LLVMOPT:-2}
 HSA_RUNTIME_PATH=${HSA_RUNTIME_PATH:-/opt/hsa}
-CMD_BRI=${CMD_BRI:-hsailasm }
+CMD_BRI=${CMD_BRI:-HSAILasm }
 
 FORTRAN=${FORTRAN:-0};
 NOGLOBFUNS=${NOGLOBFUNS:-0};
@@ -333,8 +332,8 @@ if [ ! -d $TMPDIR ] && [ ! $DRYRUN ] ; then
    echo "ERROR:  Directory $TMPDIR does not exist or could not be created"
    exit $DEADRC
 fi 
-if [ ! -e $HSA_LLVM_PATH/hsailasm ] ; then 
-   echo "ERROR:  Missing hsailasm in $HSA_LLVM_PATH"
+if [ ! -e $HSA_LLVM_PATH/HSAILasm ] ; then 
+   echo "ERROR:  Missing HSAILasm in $HSA_LLVM_PATH"
    echo "        Set env variable HSA_LLVM_PATH or use -p option"
    exit $DEADRC
 fi 

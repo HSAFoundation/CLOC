@@ -3,7 +3,6 @@
 #  snk_genw.sh: Part of snack that generates the user callable wrapper functions.
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
-#  Maintained by Shreyas Ramalingam Shreyas.Ramalingam@amd.com
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  
 # 

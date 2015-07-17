@@ -4,9 +4,8 @@
 #            using the LLVM to HSAIL backend compiler.
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
-#  Maintained by Shreyas Ramalingam Shreyas.Ramalingam@amd.com
 #
-PROGVERSION=0.9.1
+PROGVERSION=0.9.2
 #
 # Copyright (c) 2014 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -186,8 +185,9 @@ CMD_LLA=${CMD_LLA:-llvm-dis}
 LKOPTS=${LKOPTS:--prelink-opt -l $HSA_LLVM_PATH/builtins-hsail.bc -l $HSA_LLVM_PATH/builtins-gcn.bc  -l $HSA_LLVM_PATH/builtins-hsail-amd-ci.bc}
 CMD_LLL=${CMD_LLL:-llvm-link $LKOPTS}
 CMD_OPT=${CMD_OPT:-opt -O$LLVMOPT -gpu -whole}
-CMD_LLC=${CMD_LLC:-llc -O$LLVMOPT -march=hsail-64 -filetype=obj}
-CMD_ASM=${CMD_ASM:-hsailasm -disassemble}
+CMD_LLC=${CMD_LLC:-llc -O$LLVMOPT -march=hsail-64 -filetype=asm}
+CMD_BRI=${CMD_BRI:-HSAILasm}
+CMD_ASM=${CMD_ASM:-HSAILasm -disassemble}
 
 RUNDATE=`date`
 
@@ -240,8 +240,8 @@ if [ ! -d $TMPDIR ] && [ ! $DRYRUN ] ; then
    echo "ERROR:  Directory $TMPDIR does not exist or could not be created"
    exit $DEADRC
 fi 
-if [ ! -e $HSA_LLVM_PATH/hsailasm ] ; then 
-   echo "ERROR:  Missing binary hsailasm in $HSA_LLVM_PATH"
+if [ ! -e $HSA_LLVM_PATH/HSAILasm ] ; then 
+   echo "ERROR:  Missing binary HSAILasm in $HSA_LLVM_PATH"
    exit $DEADRC
 fi 
 if [ ! -d $OUTDIR ] && [ ! $DRYRUN ]  ; then 
@@ -319,22 +319,34 @@ if [ $rc != 0 ] ; then
    do_err $rc
 fi
 
- 
-[ $VERBOSE ] && echo "#Step:  llc arch=hsail	opt.bc --> $OUTFILE -O$LLVMOPT ..."
+[ $VERBOSE ] && echo "#Step:  llc arch=hsail	opt.bc --> hsail ..."
 if [ $DRYRUN ] ; then
-   echo $CMD_LLC -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.opt.bc
+   echo $HSA_LLVM_PATH/$CMD_LLC -o $TMPDIR/$FNAME.hsail $TMPDIR/$FNAME.opt.bc
 else
-   $HSA_LLVM_PATH/$CMD_LLC -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.opt.bc
+   $HSA_LLVM_PATH/$CMD_LLC -o $TMPDIR/$FNAME.hsail $TMPDIR/$FNAME.opt.bc
    rc=$?
+   if [ $rc != 0 ] ; then 
+      echo "ERROR:  The following command failed with return code $rc."
+      echo "        $HSA_LLVM_PATH/$CMD_LLC -o $TMPDIR/$FNAME.hsail $TMPDIR/$FNAME.opt.bc"
+      do_err $rc
+   fi
 fi
-if [ $rc != 0 ] ; then 
-   echo "ERROR:  The following command failed with return code $rc."
-   echo "        $CMD_LLC -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.opt.bc"
-   do_err $rc
+
+[ $VERBOSE ] && echo "#Step:  HSAILasm	hsail --> $OUTFILE -O$LLVMOPT ..."
+if [ $DRYRUN ] ; then
+   echo $CMD_BRI -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.hsail
+else
+   $HSA_LLVM_PATH/$CMD_BRI -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.hsail
+   rc=$?
+   if [ $rc != 0 ] ; then 
+      echo "ERROR:  The following command failed with return code $rc."
+      echo "        $CMD_BRI -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.hsail"
+      do_err $rc
+   fi
 fi
 
 if [ $GEN_IL ] ; then 
-   [ $VERBOSE ] && echo "#Step:  hsailasm   	brig --> $HSAILNAME ..."
+   [ $VERBOSE ] && echo "#Step:  HSAILasm   	brig --> $HSAILNAME ..."
    if [ $DRYRUN ] ; then
       echo $CMD_ASM -o $HSAILDIR/$HSAILNAME $OUTDIR/$OUTFILE
    else
