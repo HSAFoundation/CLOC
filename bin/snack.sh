@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=0.9.2
+PROGVERSION=0.9.3
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -86,6 +86,8 @@ function usage(){
     -noglobs  Do not generate global functions 
     -kstats   Print out kernel statistics (post finalization)
     -str      Depricated, create .o file needed for okra
+    -m32      Generate snackwrape in 32-bit mode. If -c, also compile in 32
+              bit mode
 
    Options with values:
     -opt      <LLVM opt>     Default=2, passed to cloc.sh to build HSAIL 
@@ -173,6 +175,7 @@ while [ $# -gt 0 ] ; do
       -hsaillib)        HSAILLIB=$2; shift ;; 
       -p)               HSA_LLVM_PATH=$2; shift ;;
       -rp)              HSA_RUNTIME_PATH=$2; shift ;;
+      -m32)		ADDRMODE=32;;
       -h) 		usage ;; 
       -help) 		usage ;; 
       --help) 		usage ;; 
@@ -218,6 +221,7 @@ CMD_BRI=${CMD_BRI:-HSAILasm }
 FORTRAN=${FORTRAN:-0};
 NOGLOBFUNS=${NOGLOBFUNS:-0};
 KSTATS=${KSTATS:-0};
+ADDRMODE=${ADDRMODE:-64};
 
 RUNDATE=`date`
 
@@ -349,6 +353,9 @@ if [ $MAKESTR ] || [ $MAKEOBJ ] ; then
       echo "ERROR:  No gcc compiler found."
       exit $DEADRC
    fi
+   if [ $ADDRMODE == 32 ] ; then
+   	$CMD_GCC = $CMD_GCC -m32
+   fi
 fi
 
 if [ $MAKESTR ] && [ $GEN_IL ] ; then 
@@ -428,13 +435,13 @@ else
 #  Not step 2, do normal steps
    [ $VERBOSE ] && echo "#Step:  genw  		cl --> $FNAME.snackwrap.c + $FNAME.h ..."
    if [ $DRYRUN ] ; then
-      echo "$HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS"
+      echo "$HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE"
    else
-      $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS
+      $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE
       rc=$?
       if [ $rc != 0 ] ; then 
          echo "ERROR:  The following command failed with return code $rc."
-         echo "        $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS"
+         echo "        $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE"
          do_err $rc
       fi
    fi
