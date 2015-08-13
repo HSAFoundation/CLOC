@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=0.9.3
+PROGVERSION=0.9.4
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -98,6 +98,7 @@ function usage(){
                              <sdir> is actual directory of snack.sh 
     -rp       <HSA RT path>  Default=$HSA_RUNTIME_PATH or /opt/hsa
     -o        <outfilename>  Default=<filename>.<ft> 
+    -foption  <fnlizer opts> Default=""  Finalizer options
     -hsaillib <hsail filename>  
 
    Examples:
@@ -169,6 +170,7 @@ while [ $# -gt 0 ] ; do
       -hsail) 		GEN_IL=true;; 
       -opt) 		LLVMOPT=$2; shift ;; 
       -gccopt) 		GCCOPT=$2; shift ;; 
+      -foption) 	FOPTION=$2; shift ;; 
       -s) 		SYMBOLNAME=$2; shift ;; 
       -o) 		OUTFILE=$2; shift ;; 
       -t) 		TMPDIR=$2; shift ;; 
@@ -222,6 +224,7 @@ FORTRAN=${FORTRAN:-0};
 NOGLOBFUNS=${NOGLOBFUNS:-0};
 KSTATS=${KSTATS:-0};
 ADDRMODE=${ADDRMODE:-64};
+FOPTION=${FOPTION:-"NONE"}
 
 RUNDATE=`date`
 
@@ -435,13 +438,13 @@ else
 #  Not step 2, do normal steps
    [ $VERBOSE ] && echo "#Step:  genw  		cl --> $FNAME.snackwrap.c + $FNAME.h ..."
    if [ $DRYRUN ] ; then
-      echo "$HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE"
+      echo "$HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE \"$FOPTION\" "
    else
-      $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE
+      $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE "\"$FOPTION\""
       rc=$?
       if [ $rc != 0 ] ; then 
          echo "ERROR:  The following command failed with return code $rc."
-         echo "        $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE"
+         echo "        $HSA_LLVM_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE \"$FOPTION\""
          do_err $rc
       fi
    fi

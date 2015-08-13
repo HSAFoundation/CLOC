@@ -381,7 +381,7 @@ status_t __CN__InitContext(){
     hsa_ext_control_directives_t control_directives;
     memset(&control_directives, 0, sizeof(hsa_ext_control_directives_t));
     hsa_code_object_t code_object;
-    err = hsa_ext_program_finalize(__CN__HsaProgram, isa, 0, control_directives, "", HSA_CODE_OBJECT_TYPE_PROGRAM, &code_object);
+    err = hsa_ext_program_finalize(__CN__HsaProgram, isa, 0, control_directives,__FOPTION__, HSA_CODE_OBJECT_TYPE_PROGRAM, &code_object);
     ErrorCheck(Finalizing the program, err);
 
     /* Destroy the program, it is no longer needed.  */
@@ -714,6 +714,12 @@ fi
 # If 32 bit mode
 __ADDRMODE=${11}
 
+# Finalizer options
+__FOPTION=${12}
+if [ "$__FOPTION" == "\"NONE\"" ] ; then 
+   __FOPTION="\"\""
+fi
+
 # Intermediate files.
 __EXTRACL=${__TMPD}/extra.cl
 __KARGLIST=${__TMPD}/klist
@@ -752,7 +758,7 @@ __SEDCMD=" "
 
    write_copyright_template >>$__CWRAP
    write_header_template >>$__CWRAP
-   write_context_template | sed -e "s/_CN_/${__SN}/g"  >>$__CWRAP
+   write_context_template | sed -e "s/_CN_/${__SN}/g;s/__FOPTION__/${__FOPTION}/g"  >>$__CWRAP
 
    if [ "$__NO_GLOB_FUNS" == "0" ] ; then 
       write_global_functions_template >>$__CWRAP
