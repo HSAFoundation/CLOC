@@ -5,7 +5,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=0.9.2
+PROGVERSION=0.9.4
 #
 # Copyright (c) 2014 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -69,6 +69,7 @@ function usage(){
     -p       <path>           $HSA_LLVM_PATH or <cdir> if HSA_LLVM_PATH not set
                               <cdir> is actual directory of cloc.sh 
     -clopts  <compiler opts>  Default="-cl-std=CL2.0"
+    -I       <include dir>    Provide one directory per -I option
     -lkopts  <LLVM link opts> Default="-prelink-opt   \
               -l <cdir>/builtins-hsail.bc -l <cdir>/builtins-gcn.bc   \
               -l <cdir>/builtins-hsail-amd-ci.bc"
@@ -121,7 +122,7 @@ function getdname(){
 }
 
 #  --------  The main code starts here -----
-
+INCLUDES=""
 #  Argument processing
 while [ $# -gt 0 ] ; do 
    case "$1" in 
@@ -133,6 +134,7 @@ while [ $# -gt 0 ] ; do
       -hsail) 		GEN_IL=true;; 
       -ll) 		GENLL=true;KEEPTDIR=true;; 
       -clopts) 		CLOPTS=$2; shift ;; 
+      -I) 		INCLUDES="$INCLUDES -I $2"; shift ;; 
       -opt) 		LLVMOPT=$2; shift ;; 
       -lkopts) 		LKOPTS=$2; shift ;; 
       -o) 		OUTFILE=$2; shift ;; 
@@ -180,7 +182,7 @@ HSA_LLVM_PATH=${HSA_LLVM_PATH:-$cdir}
 #  Set Default values,  all CMD_ are started from $HSA_LLVM_PATH
 LLVMOPT=${LLVMOPT:-2} 
 #  no default CLOPTS -cl-std=CL2.0 is a forced option to the clc2 command
-CMD_CLC=${CMD_CLC:-clc2 -cl-std=CL2.0 $CLOPTS}
+CMD_CLC=${CMD_CLC:-clc2 -cl-std=CL2.0 $CLOPTS $INCLUDES}
 CMD_LLA=${CMD_LLA:-llvm-dis}
 LKOPTS=${LKOPTS:--prelink-opt -l $HSA_LLVM_PATH/builtins-hsail.bc -l $HSA_LLVM_PATH/builtins-gcn.bc  -l $HSA_LLVM_PATH/builtins-hsail-amd-ci.bc}
 CMD_LLL=${CMD_LLL:-llvm-link $LKOPTS}
