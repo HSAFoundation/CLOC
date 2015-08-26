@@ -5,7 +5,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=0.9.4
+PROGVERSION=0.9.5
 #
 # Copyright (c) 2014 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -73,6 +73,7 @@ function usage(){
     -lkopts  <LLVM link opts> Default="-prelink-opt   \
               -l <cdir>/builtins-hsail.bc -l <cdir>/builtins-gcn.bc   \
               -l <cdir>/builtins-hsail-amd-ci.bc"
+    -hsaillib <fname>         Filename of hsail library.
 
    Examples:
     cloc.sh my.cl               /* create my.brig                   */
@@ -139,6 +140,7 @@ while [ $# -gt 0 ] ; do
       -lkopts) 		LKOPTS=$2; shift ;; 
       -o) 		OUTFILE=$2; shift ;; 
       -t) 		TMPDIR=$2; shift ;; 
+      -hsaillib) 	HSAILLIB=$2; shift ;; 
       -p)               HSA_LLVM_PATH=$2; shift ;;
       -h) 		usage ;; 
       -help) 		usage ;; 
@@ -202,6 +204,13 @@ fi
 if [ ! -e "$LASTARG" ]  ; then 
    echo "ERROR:  The file $LASTARG does not exist."
    exit $DEADRC
+fi
+
+if [ "$HSAILLIB" != "" ] ; then 
+   if [ ! -f $HSAILLIB ] ; then 
+      echo "ERROR:  The HSAIL library file $HSAILLIB does not exist "
+      exit $DEADRC
+   fi
 fi
 
 # Parse LASTARG for directory, filename, and symbolname
@@ -331,6 +340,45 @@ else
       echo "ERROR:  The following command failed with return code $rc."
       echo "        $HSA_LLVM_PATH/$CMD_LLC -o $TMPDIR/$FNAME.hsail $TMPDIR/$FNAME.opt.bc"
       do_err $rc
+   fi
+fi
+
+if [ "$HSAILLIB" != "" ] ; then 
+   # An HSAILLIB hsail_lib.hsail requires a corresponding hsail_lib.h that 
+   # the programmer included in his .cl.  This header resulted in the generation of 
+   # "decl prog functions" at the top of his hsail for every function in his header functions. 
+   # We must remove these and add the HSAILLIB in its place. 
+   
+   [ $VERBOSE ] && echo "#Step:  HSAILLIB 	Add hsaillib to hsail"
+   if [ $DRYRUN ] ; then
+      echo "DRYRUN commands for adding HSAILLIB not available "
+   else
+      # build a sedstring with names of functions in HSAILLIB
+      sedstringfile=$TMPDIR/sedstring$$
+      grep "decl function" $HSAILLIB | while read line  ; do 
+         name=`echo $line | cut -d" " -f3 | cut -d"(" -f1`
+         echo -n "${sep}^decl\sprog\sfunction\s${name}("
+      sep="\|"
+      done >$sedstringfile
+      sedstring=`cat $sedstringfile`
+      rm $sedstringfile
+      # Rip out "decl prog function" prototypes from original hsail
+      noprogfile=$TMPDIR/noproghsail.hsail
+      finalfile=$TMPDIR/finalhsail.hsail
+      cmd="/bin/sed -e ""/${sedstring}/d"" "
+      $cmd $TMPDIR/$FNAME.hsail >$noprogfile
+      # Piece together final hsail with header, HSAILLIB, and remaining hsail
+      cmd="sed -e ""/^decl\sprog\sfunction\s&abort()/,\$d "" "
+      $cmd $noprogfile >$finalfile
+      echo "//  START of HSAILLIB $HSAILLIB" >>$finalfile
+      cat $HSAILLIB >>$finalfile
+      echo "//  END of HSAILLIB $HSAILLIB" >>$finalfile
+      cmd="sed -e ""1,/^decl\sprog\sfunction\s&abort()/d"" "
+      echo "decl prog function &abort()();" >>$finalfile
+      $cmd $noprogfile >>$finalfile
+      cp $finalfile $TMPDIR/$FNAME.hsail
+      rm $finalfile
+      rm $noprogfile
    fi
 fi
 

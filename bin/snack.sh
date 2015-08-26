@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=0.9.4
+PROGVERSION=0.9.5
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -453,6 +453,9 @@ else
    if [ $CLOCVERBOSE ] ; then 
       OTHERCLOCFLAGS="$OTHERCLOCFLAGS -v"
    fi
+   if [ "$HSAILLIB" != "" ] ; then 
+      OTHERCLOCFLAGS="$OTHERCLOCFLAGS -hsaillib $HSAILLIB"
+   fi
    [ $VERBOSE ] && echo "#Step:  cloc.sh		cl --> brig ..."
    if [ $DRYRUN ] ; then
       echo "$HSA_LLVM_PATH/cloc.sh -t $TMPDIR -k -clopts ""-I$INDIR"" $OTHERCLOCFLAGS $TMPDIR/updated.cl"
@@ -469,9 +472,6 @@ else
       fi
       if [ $GEN_IL ] ; then 
          cp $TMPDIR/updated.hsail $OUTDIR/$FNAME.hsail
-         if [ "$HSAILLIB" != "" ] ; then 
-            cat $HSAILLIB >> $OUTDIR/$FNAME.hsail
-         fi
       fi
    fi
    BRIGDIR=$TMPDIR
@@ -514,38 +514,6 @@ if [ $MAKESTR ] ; then
       fi
 
 else
-
-if [ "$HSAILLIB" != "" ] ; then 
-   # disassemble brig $BRIGDIR/$BRIGNAME to composite.hsail
-   [ $VERBOSE ] && echo "#Step:  Add HSAIL		brig --> hsail+hsaillib --> $BRIGHFILE ..."
-   if [ $DRYRUN ] ; then
-      echo $HSA_LLVM_PATH/$CMD_BRI -disassemble -o $TMPDIR/composite.hsail $BRIGDIR/$BRIGNAME
-   else
-      $HSA_LLVM_PATH/$CMD_BRI -disassemble -o $TMPDIR/composite.hsail $BRIGDIR/$BRIGNAME
-   fi
- 
-   # Add $HSAILLIB to file 
-   if [ $DRYRUN ] ; then
-      echo cat $HSAILLIB >> $TMPDIR/composite.hsail
-   else
-      cat $HSAILLIB >> $TMPDIR/composite.hsail
-   fi
-
-   # assemble complete hsail file to brig $BRIGDIR/$BRIGNAME
-   if [ $DRYRUN ] ; then
-      echo $HSA_LLVM_PATH/$CMD_BRI -o $BRIGDIR/$BRIGNAME $TMPDIR/composite.hsail
-      rc=0
-   else
-      $HSA_LLVM_PATH/$CMD_BRI -o $BRIGDIR/$BRIGNAME $TMPDIR/composite.hsail
-      rc=$?
-   fi
-   if [ $rc != 0 ] ; then 
-      echo "ERROR:  HSAIL assembly of HSAILLIB failed with return code $rc. Command was:"
-      echo "        $HSA_LLVM_PATH/$CMD_BRI -o $BRIGDIR/$BRIGNAME $TMPDIR/composite.hsail"
-      do_err $rc
-   fi
-  
-fi
 
 #   Not depricated option -str 
 [ $VERBOSE ] && echo "#Step:  hexdump		brig --> $BRIGHFILE ..."

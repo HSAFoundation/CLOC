@@ -1,4 +1,4 @@
-CLOC - V 0.9.2 (HSA 1.0F) 
+CLOC - V 0.9.5 (HSA 1.0F) 
 =========================
 
 CLOC:  CL Offline Compiler
@@ -84,9 +84,11 @@ Software License Agreement.
     -p       <path>           $HSA_LLVM_PATH or <cdir> if HSA_LLVM_PATH not set
                               <cdir> is actual directory of cloc.sh 
     -clopts  <compiler opts>  Default="-cl-std=CL2.0"
+    -I       <include dir>    Provide one directory per -I option
     -lkopts  <LLVM link opts> Default="-prelink-opt   \
               -l <cdir>/builtins-hsail.bc -l <cdir>/builtins-gcn.bc   \
-              -l <cdir>/builtins-hsail-amd-ci.bc  -l <cdir>/builtins-ocml.bc"
+              -l <cdir>/builtins-hsail-amd-ci.bc"
+    -hsaillib <fname>         Filename of hsail library.
 
    Examples:
     cloc.sh my.cl               /* create my.brig                   */
@@ -125,6 +127,8 @@ Software License Agreement.
     -noglobs  Do not generate global functions 
     -kstats   Print out kernel statistics (post finalization)
     -str      Depricated, create .o file needed for okra
+    -m32      Generate snackwrape in 32-bit mode. If -c, also compile in 32
+              bit mode
 
    Options with values:
     -opt      <LLVM opt>     Default=2, passed to cloc.sh to build HSAIL 
@@ -135,6 +139,7 @@ Software License Agreement.
                              <sdir> is actual directory of snack.sh 
     -rp       <HSA RT path>  Default=$HSA_RUNTIME_PATH or /opt/hsa
     -o        <outfilename>  Default=<filename>.<ft> 
+    -foption  <fnlizer opts> Default=""  Finalizer options
     -hsaillib <hsail filename>  
 
    Examples:
@@ -149,7 +154,6 @@ Software License Agreement.
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.
-
 ```
 
 <A NAME="ReadmeExamples">
@@ -258,14 +262,38 @@ modified hsail as follows.
 ```
 The above will fail if either the myKernels.hsail or myKernels.snackwrap.c file are missing.
 
-## Example 3: Single Source
+## Example 3: Use of -hsaillib by cloc.sh and snack.sh
 
-Currently cloc does not support the combination of kernel code and host code in the same
-file. A future utility may provide this.  For now, put your kernel and device code
-(routines called by kernels) into a .cl file for cloc to compile.  Put your host code into 
-separate files with appropriate filetypes for your build environment.  The host code can 
-be c++, c, or FORTRAN.  
+In version 0.9.5 of cloc.sh and snack.sh , there is an option to provide an HSAIL library.
+This options specifies a single file with the hsail for multiple functions that can be 
+called directly by cl.  One should have a corresponding header file for these functions.  
+An example to use the -hsaillib option is provided in the directory examples/snack/test_hsail_lib. 
+This example uses the simple HSAIL library provided in the directory examples/mathdemo_hsaillib
 
-One advantage of isolating kernel code from host code is that you can use any compiler
-for your host code.  Any future utility that supports a single source will likely be bound
-to a specific compiler. 
+Here you see the header file and the corresponding hsail file. This is the contents of 
+the header file mathdemo_hsaillib.h. 
+```
+float __sin(float in);
+float __cos(float in);
+float __exp(float in);
+```
+The example cl file (examples/snack/test_hsail_lib/test_hsail_lib.cl) includes the above header file. 
+```
+#include "../../mathdemo_hsaillib/mathdemo_hsaillib.h"
+__kernel void testkernel( __global float * outfval , __global const float  * fval) {
+   int i = get_global_id(0);
+   outfval[i] =  __sin(fval[i]);
+}
+```
+If you want to compile and build the example that uses snack, execute the buildrun.sh script found
+in the example directory.  It calls snack as follows. 
+```
+snack.sh  -v -c  -hsaillib ../../mathdemo_hsaillib/mathdemo_hsaillib.hsail test_hsail_lib.cl
+```
+If you are just building the hsail for the above kernel, provide the -hsaillib option to cloc.sh
+as follows.
+```
+cloc.sh  -hsail -hsaillib ../../mathdemo_hsaillib/mathdemo_hsaillib.hsail test_hsail_lib.cl
+```
+Your resulting hsail test_hsail_lib.hsail will include the hsaillib inserted into the correct
+position. The generated brig will also include the library. 
