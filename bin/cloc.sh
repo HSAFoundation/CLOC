@@ -365,7 +365,7 @@ if [ "$HSAILLIB" != "" ] ; then
       # Rip out "decl prog function" prototypes from original hsail
       noprogfile=$TMPDIR/noproghsail.hsail
       finalfile=$TMPDIR/finalhsail.hsail
-      cmd="/bin/sed -e ""/${sedstring}/d"" "
+      cmd="/bin/sed -e ""/${sedstring}/,/;/d"" "
       $cmd $TMPDIR/$FNAME.hsail >$noprogfile
       # Piece together final hsail with header, HSAILLIB, and remaining hsail
       cmd="sed -e ""/^decl\sprog\sfunction\s&abort()/,\$d "" "
