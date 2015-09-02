@@ -1,0 +1,460 @@
+#!/bin/bash
+#
+#  hsa_tools:  Check status of HSA tools on current system. 
+#
+#  Written by Greg Rodgers  Gregory.Rodgers@amd.com
+#
+#  TODO: Add Python, boost, clSparse, Kokkos
+#  Please contact Greg if you want your HSA tool added to this list
+#
+PROGVERSION=0.1.2
+#
+# Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  
+# 
+# AMD is granting you permission to use this software and documentation (if any) (collectively, the 
+# Materials) pursuant to the terms and conditions of the Software License Agreement included with the 
+# Materials.  If you do not have a copy of the Software License Agreement, contact your AMD 
+# representative for a copy.
+# 
+# You agree that you will not reverse engineer or decompile the Materials, in whole or in part, except for 
+# example code which is provided in source code form and as allowed by applicable law.
+# 
+# WARRANTY DISCLAIMER: THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY 
+# KIND.  AMD DISCLAIMS ALL WARRANTIES, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING BUT NOT 
+# LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+# PURPOSE, TITLE, NON-INFRINGEMENT, THAT THE SOFTWARE WILL RUN UNINTERRUPTED OR ERROR-
+# FREE OR WARRANTIES ARISING FROM CUSTOM OF TRADE OR COURSE OF USAGE.  THE ENTIRE RISK 
+# ASSOCIATED WITH THE USE OF THE SOFTWARE IS ASSUMED BY YOU.  Some jurisdictions do not 
+# allow the exclusion of implied warranties, so the above exclusion may not apply to You. 
+# 
+# LIMITATION OF LIABILITY AND INDEMNIFICATION:  AMD AND ITS LICENSORS WILL NOT, 
+# UNDER ANY CIRCUMSTANCES BE LIABLE TO YOU FOR ANY PUNITIVE, DIRECT, INCIDENTAL, 
+# INDIRECT, SPECIAL OR CONSEQUENTIAL DAMAGES ARISING FROM USE OF THE SOFTWARE OR THIS 
+# AGREEMENT EVEN IF AMD AND ITS LICENSORS HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH 
+# DAMAGES.  In no event shall AMD's total liability to You for all damages, losses, and 
+# causes of action (whether in contract, tort (including negligence) or otherwise) 
+# exceed the amount of $100 USD.  You agree to defend, indemnify and hold harmless 
+# AMD and its licensors, and any of their directors, officers, employees, affiliates or 
+# agents from and against any and all loss, damage, liability and other expenses 
+# (including reasonable attorneys' fees), resulting from Your use of the Software or 
+# violation of the terms and conditions of this Agreement.  
+# 
+# U.S. GOVERNMENT RESTRICTED RIGHTS: The Materials are provided with "RESTRICTED RIGHTS." 
+# Use, duplication, or disclosure by the Government is subject to the restrictions as set 
+# forth in FAR 52.227-14 and DFAR252.227-7013, et seq., or its successor.  Use of the 
+# Materials by the Government constitutes acknowledgement of AMD's proprietary rights in them.
+# 
+# EXPORT RESTRICTIONS: The Materials may be subject to export restrictions as stated in the 
+# Software License Agreement.
+# 
+function usage(){
+/bin/cat 2>&1 <<"EOF" 
+
+   hsa_tools: List available HSA tools, versions, reference dates, and location
+
+   Usage: hsa_tools [ options ] 
+
+   Options without values:
+    -h            Print this help message
+    -v            Print version of hsa_tools
+    -r            Add reference file location information
+    -c            Include commercial tools
+    -limited      Include limited access tools
+    -a            List all known tools
+    --no-headers  Do not print header info
+
+   Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.
+
+EOF
+   exit 1 
+}
+
+function version(){
+   echo $PROGVERSION
+   exit 0
+}
+function getdname(){
+   local __DIRN=`dirname "$1"`
+   if [ "$__DIRN" = "." ] ; then 
+      __DIRN=$PWD; 
+   else
+      if [ ${__DIRN:0:1} != "/" ] ; then 
+         if [ ${__DIRN:0:2} == ".." ] ; then 
+               __DIRN=`dirname $PWD`/${__DIRN:3}
+         else
+            if [ ${__DIRN:0:1} = "." ] ; then 
+               __DIRN=$PWD/${__DIRN:2}
+            else
+               __DIRN=$PWD/$__DIRN
+            fi
+         fi
+      fi
+   fi
+   echo $__DIRN
+}
+
+#  Argument processing
+while [ $# -gt 0 ] ; do 
+   case "$1" in 
+      -h) 		usage ;; 
+      -help) 		usage ;; 
+      --help) 		usage ;; 
+      -v) 	        version ;; 
+      -version) 	version ;; 
+      --version) 	version ;; 
+      --no-headers) 	NOHEADERS=true;; 
+      -r) 	        PRINTREF=true;; 
+      -c) 	        COMMERCIAL=true;; 
+      -limited)         LIMITED=true;; 
+      -a) 	        PRINTALL=true;; 
+      --) 		shift ; break;;
+      -*) 		usage ;;
+      *) 		break;echo $1 ignored;
+   esac
+   shift
+done
+
+# The above while loop is exited when last string with a "-" is processed
+LASTARG=$1
+shift
+[ ! $NOHEADERS ] && HEADERS=true
+
+hsatls_name="hsa_tools"
+hsatls_ver=$PROGVERSION
+cdir=$(getdname $0)
+[ ! -L "$cdir/hsa_tools" ] || cdir=$(getdname `readlink "$cdir/hsa_tools"`)
+hsatls_loc=$cdir/hsa_tools
+day=`ls -l --time-style +%Y-%m-%d $hsatls_loc | cut -d" " -f6`
+hsatls_date="$day "
+
+firmwa_name="BIOS Firmware"
+tbiostr=`dmesg | grep DMI | grep -v HDMI | cut -d"," -f2-3`
+biostr=${tbiostr#*,}
+if [ "$biostr" == "" ] ; then biostr=$tbiostr; fi
+firmwa_ver=`echo $biostr | cut -d" " -f2`
+firmwa_date=`echo $biostr| cut -d" " -f3`
+firmwa_loc="NA"
+if [ "$firmwa_ver" == "" ] ; then 
+   firmwa_ver="ERROR: check dmesg"
+fi
+
+linuxm_name="Linux Kernel Version"
+linuxm_ver=`uname -r`
+day=`uname -v | cut -d" " -f5`
+month=`uname -v | cut -d" " -f4`
+year=`uname -v | cut -d" " -f8`
+linuxm_date="${year}-${month}-${day}"
+linuxm_loc="NA"
+
+amdkfd_name="AMD KFD Kernel Driver"
+amdkfd_ver=`modinfo -F version amdkfd 2>&1 `
+if [ $? == 0 ] ; then 
+   fname=`modinfo -F filename amdkfd`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   amdkfd_date="$day"
+   amdkfd_loc=$fname
+else
+   amdkfd_ver="MISSING"
+   amdkfd_date="  "
+fi
+
+hsartm_name="HSA Runtime"
+dpkg-query -s  hsa-runtime 2>/dev/null >/dev/null
+if [ $? == 0 ] ; then 
+#  Fixme - should be using hsainfo for this
+   hsartm_ver=`dpkg-query -s  hsa-runtime | grep Version | cut -d" " -f2`
+   fname="/opt/hsa/lib/libhsa-runtime64.so"
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   hsartm_date="$day"
+   if [ "$hsartm_date" == "2015-01-19" ] ; then 
+      hsartm_ver="${hsartm_ver}P Provisional"
+   fi
+   hsartm_loc=$fname
+else
+   hsartm_ver="MISSING"
+   hsartm_date="  "
+fi
+
+if [ $LIMITED ] || [ $PRINTALL ] ; then 
+opencl_name="HSA OpenCL"
+fname=`which clinfo`
+if [ -f $fname ] ; then
+   fname2="/opt/amd/opencl/current/bin/clinfo"
+   if [ -f $fname2 ] ; then
+      opencl_ver=`$fname 2>&1 | grep "Platform Version" | cut -d":" -f2  | cut -d" " -f2-5`
+      day=`ls -l --time-style +%Y-%m-%d $fname2 | cut -d" " -f6`
+      opencl_date="$day "
+      opencl_loc=$fname2
+   else
+     opencl_ver="MISSING"
+     opencl_date="  "
+   fi
+else
+  opencl_ver="MISSING"
+  opencl_date="  "
+fi
+fi
+
+llvmbe_name="LLVM HSAIL HLC"
+fname="/usr/local/hsail-llvm/bin/llc"
+if [ -f $fname ] ; then
+   llvmbe_ver=`/usr/local/hsail-llvm/bin/llc --version | grep version | cut -d" " -f5`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   llvmbe_date="$day "
+   llvmbe_loc=$fname
+else
+   llvmbe_ver="MISSING"
+   llvmbe_date="  "
+fi
+
+hsaila_name="HSAIL/Brig Assember"
+fname="/usr/local/hsail-llvm/bin/HSAILasm"
+if [ -f $fname ] ; then
+   hsaila_ver=`/usr/local/hsail-llvm/bin/HSAILasm -version | grep Version | cut -d" " -f4`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   hsaila_date="$day "
+   hsaila_loc=$fname
+else
+   hsaila_ver="MISSING"
+   hsaila_date="  "
+fi
+
+gccbas_name="GCC base"
+vername=`readlink /usr/bin/gcc`
+if [ "$vername" == "" ] ; then 
+   fname="/usr/bin/gcc"
+else 
+   if  [ -f $vername ] ; then 
+      fname=$vername
+   else
+      fname="/usr/bin/$vername"
+   fi
+fi
+if [ -f $fname ] ; then
+   gccbas_ver=`$fname  --version | grep gcc | cut -d" " -f4`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   gccbas_date="$day"
+   gccbas_loc=$fname
+else
+   gccbas_ver="MISSING"
+   gccbas_date="  "
+fi
+
+gcchsa_name="GCC HSA Compiler"
+fname="/usr/local/hsagcc/bin/gcc"
+if [ -f $fname ] ; then
+   gcchsa_ver=`/usr/local/hsagcc/bin/gcc --version | grep gcc | cut -d" " -f3`
+   gcchsa_date=`/usr/local/hsagcc/bin/gcc --version | grep gcc | cut -d" " -f4`
+   fname="/usr/local/hsagcc/bin/gcc"
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   gcchsa_date="$day"
+   gcchsa_loc=$fname
+else
+   gcchsa_ver="MISSING"
+   gcchsa_date="  "
+fi
+
+opencc_name="OpenUH OpenACC  "
+dirname="/usr/local/openuh"
+if [ -d $dirname ] ; then
+   opencc_ver=`/usr/local/openuh/bin/opencc --version 2>&1 | grep OpenUH | cut -d" " -f2`
+   opencc_date=`/usr/local/openuh/bin/opencc --version 2>&1 | grep Built | cut -d" " -f3`
+   opencc_loc=$dirname
+else
+   opencc_ver="MISSING"
+   opencc_date="  "
+fi
+
+kalmar_name="MCW Kalmar Compiler"
+fname="/opt/kalmar/bin/clang++"
+if [ -f $fname ] ; then
+   kalmar_ver=`/opt/kalmar/bin/clang++ --version 2>&1  | grep Kalmar   | cut -d" " -f9`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   kalmar_date="$day"
+   kalmar_loc=$fname
+else
+   kalmar_ver="MISSING"
+   kalmar_date="  "
+fi
+
+if [ $COMMERCIAL ] || [ $PRINTALL ] ; then 
+codepl_name="Codeplay C++ Compiler"
+fname="/usr/local/codeplay/compiler/bin/clang++"
+if [ -f $fname ] ; then
+   codepl_ver=`/usr/local/codeplay/compiler/bin/clang++ --version 2>&1  | grep clang | cut -d"(" -f2 | cut -d" " -f1`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   codepl_date="$day"
+   codepl_loc=$fname
+else
+   codepl_ver="MISSING"
+   codepl_date="  "
+fi
+fi
+
+if [ $COMMERCIAL ] || [ $PRINTALL ] ; then 
+pathsc_name="Pathscale ENZO    "
+fname="/opt/enzo/bin/pathcc"
+if [ -f $fname ] ; then
+   pathsc_ver=`/opt/enzo/bin/pathcc  --version 2>&1  | grep ENZO | cut -d" " -f6`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   pathsc_date="$day"
+   pathsc_loc=$fname
+else
+   pathsc_ver="MISSING"
+   pathsc_date="  "
+fi
+fi
+
+profil_name="AMD CodeXL Profiler"
+fname="/opt/amd/sprofile/bin/sprofile"
+if [ -f $fname ] ; then
+   profil_ver=`/opt/amd/sprofile/bin/sprofile --version | cut -d" " -f9`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   profil_date="$day"
+   profil_loc=$fname
+else
+   profil_ver="MISSING"
+   profil_date="  "
+fi
+
+debugr_name="AMD HSAIL debugger"
+fname="/opt/amd/hsa-debugger/AMDHsailGdb-v0.5/bin/x86_64/hsail-gdb"
+if [ -f $fname ] ; then
+   debugr_ver=`/opt/amd/hsa-debugger/AMDHsailGdb-v0.5/bin/x86_64/hsail-gdb --version 2>&1 | grep hsail-gdb | cut -d" " -f3`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   debugr_date="$day "
+   debugr_loc=$fname
+else
+   debugr_ver="MISSING"
+   debugr_date="  "
+fi
+
+clocsh_name="CLOC Compiler"
+fname="/opt/amd/cloc/bin/cloc.sh"
+if [ -f $fname ] ; then
+   clocsh_ver=`/opt/amd/cloc/bin/cloc.sh  --version`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   clocsh_date="$day "
+   clocsh_loc=$fname
+else
+   clocsh_ver="MISSING"
+   clocsh_date="  "
+fi
+
+if [ $LIMITED ] || [ $PRINTALL ] ; then 
+atmitl_name="ATMI"
+fname="/opt/amd/atmi/bin/atmi_version"
+if [ -f $fname ] ; then
+   atmitl_ver=`/opt/amd/atmi/bin/atmi_version`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   atmitl_date="$day "
+   atmitl_loc=$fname
+else
+   atmitl_ver="MISSING"
+   atmitl_date="  "
+fi
+fi
+
+if [ $LIMITED ] || [ $PRINTALL ] ; then 
+hsainf_name="hsainfo"
+fname="/usr/local/bin/hsainfo.bin"
+if [ -f $fname ] ; then
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   hsainf_date="$day "
+   hsainf_ver="$day "
+   hsainf_loc=$fname
+else
+   hsainf_ver="MISSING"
+   hsainf_date="  "
+fi
+fi
+
+if [ $LIMITED ] || [ $PRINTALL ] ; then 
+hofinf_name="Offline finalizer-hof"
+fname="/usr/local/bin/hof"
+if [ -f $fname ] ; then
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   hofinf_date="$day "
+   hofinf_ver="$day "
+   hofinf_loc=$fname
+else
+   hofinf_ver="MISSING"
+   hofinf_date="  "
+fi
+fi
+
+thisdate=`date +%Y-%m-%d`
+hostname=`hostname`
+if [ $HEADERS ] ; then
+   echo 
+   echo  "HSA Tools Info:"
+   printf "Date:%-18s Hostname:%-12s\n" "$thisdate" "$hostname" 
+   echo 
+   if [ $PRINTREF ] ; then 
+      printf "%-22s	%-32s	%-11s %-9s %s\n" "NAME" "VERSION" "DATE" "TYPE" "LOC"
+      printf "%-22s	%-32s	%-11s %-9s %s\n" "----" "-------" "----" "----" "---"
+   else
+      printf "%-22s	%-32s	%-11s %-9s %s\n" "NAME" "VERSION" "DATE" "TYPE" 
+      printf "%-22s	%-32s	%-11s %-9s %s\n" "----" "-------" "----" "----" 
+   fi
+fi
+
+if [ $PRINTREF ] ; then 
+
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$firmwa_name" "$firmwa_ver" "$firmwa_date" "firmware" "$firmwa_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$linuxm_name" "$linuxm_ver" "$linuxm_date" "kernel" "$linuxm_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$amdkfd_name" "$amdkfd_ver" "$amdkfd_date" "kernel" "$amdkfd_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsartm_name" "$hsartm_ver" "$hsartm_date" "runtime" "$hsartm_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$kalmar_name" "$kalmar_ver" "$kalmar_date" "compiler" "$kalmar_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$clocsh_name" "$clocsh_ver" "$clocsh_date" "compiler" "$clocsh_loc"
+[ $LIMITED ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$atmitl_name" "$atmitl_ver" "$atmitl_date" "compiler" "$atmitl_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$gccbas_name" "$gccbas_ver" "$gccbas_date" "compiler" "$gccbas_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$gcchsa_name" "$gcchsa_ver" "$gcchsa_date" "compiler" "$gcchsa_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencc_name" "$opencc_ver" "$opencc_date" "compiler" "$opencc_loc"
+[ $COMMERCIAL ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$codepl_name" "$codepl_ver" "$codepl_date" "compiler" "$codepl_loc"
+[ $COMMERCIAL ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$pathsc_name" "$pathsc_ver" "$pathsc_date" "compiler" "$pathsc_loc"
+[ $LIMITED ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencl_name" "$opencl_ver" "$opencl_date" "compiler" "$opencl_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "utility" "$llvmbe_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsaila_name" "$hsaila_ver" "$hsaila_date" "utility" "$hsaila_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$profil_name" "$profil_ver" "$profil_date" "tool" "$profil_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$debugr_name" "$debugr_ver" "$debugr_date" "tool" "$debugr_loc"
+[ $LIMITED ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsainf_name" "$hsainf_ver" "$hsainf_date" "tool" "$hsainf_loc"
+[ $LIMITED ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hofinf_name" "$hofinf_ver" "$hofinf_date" "tool" "$hofinf_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsatls_name" "$hsatls_ver" "$hsatls_date" "tool" "$hsatls_loc"
+
+else
+
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$firmwa_name" "$firmwa_ver" "$firmwa_date" "firmware" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$linuxm_name" "$linuxm_ver" "$linuxm_date" "kernel" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$amdkfd_name" "$amdkfd_ver" "$amdkfd_date" "kernel" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsartm_name" "$hsartm_ver" "$hsartm_date" "runtime" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$kalmar_name" "$kalmar_ver" "$kalmar_date" "compiler" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$clocsh_name" "$clocsh_ver" "$clocsh_date" "compiler" 
+[ $LIMITED ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$atmitl_name" "$atmitl_ver" "$atmitl_date" "compiler" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$gccbas_name" "$gccbas_ver" "$gccbas_date" "compiler" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$gcchsa_name" "$gcchsa_ver" "$gcchsa_date" "compiler" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencc_name" "$opencc_ver" "$opencc_date" "compiler" 
+[ $COMMERCIAL ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$codepl_name" "$codepl_ver" "$codepl_date" "compiler" 
+[ $COMMERCIAL ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$pathsc_name" "$pathsc_ver" "$pathsc_date" "compiler" 
+[ $LIMITED ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencl_name" "$opencl_ver" "$opencl_date" "compiler" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "utility" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsaila_name" "$hsaila_ver" "$hsaila_date" "utility" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$profil_name" "$profil_ver" "$profil_date" "tool" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$debugr_name" "$debugr_ver" "$debugr_date" "tool" 
+[ $LIMITED ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsainf_name" "$hsainf_ver" "$hsainf_date" "tool" 
+[ $LIMITED ] || [ $PRINTALL ] && \
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hofinf_name" "$hofinf_ver" "$hofinf_date" "tool" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsatls_name" "$hsatls_ver" "$hsatls_date" "tool" 
+
+fi
