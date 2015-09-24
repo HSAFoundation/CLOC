@@ -1,0 +1,20 @@
+
+HSA Tools Info:
+Date:2015-09-24         Hostname:xn9         
+
+NAME                  	VERSION                         	DATE        TYPE      
+----                  	-------                         	----        ----      
+BIOS Firmware         	F6                              	08/12/2014  firmware  
+Linux Kernel Version  	4.0.0-100050-generic            	2015-Sep-16 kernel    
+AMD KFD Kernel Driver 	1.6.0                           	2015-09-16  kernel    
+HSA Runtime           	1.0.3                           	2015-09-22  runtime   
+MCW Kalmar Compiler   	0.7.1536-ce093ab-4e3e489        	2015-09-09  compiler  
+CLOC Compiler         	0.9.5                           	2015-08-27  compiler  
+GCC base              	4.9.2                           	2014-11-04  compiler  
+GCC HSA Compiler      	6.0.0-hsa-rev-228052            	2015-09-23  compiler  
+OpenUH OpenACC        	3.0.40                          	2015-08-06  compiler  
+LLVM HSAIL HLC        	3.6.0svn                        	2015-07-29  utility   
+HSAIL/Brig Assember   	3.0.                            	2015-07-24  utility   
+AMD CodeXL Profiler   	V3.1.4195                       	2015-06-26  tool      
+AMD HSAIL debugger    	0.5.633                         	2015-07-17  tool      
+hsa_tools             	0.1.2                           	2015-09-02  tool      
