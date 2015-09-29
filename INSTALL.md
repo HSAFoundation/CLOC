@@ -110,10 +110,11 @@ sudo dpkg -i hsa-runtime_1.0.3_amd64.deb
 As of Cloc version 0.9 the cl frontend clc2 and supporting LLVM 3.6 executables are stored in the same directory as the cloc.sh, snack.sh and snk_genw.sh shell scripts.  These scripts need to be copied should be copied into /opt/amd/cloc/bin
 ```
 cd ~/git
-git clone -b master https://github.com/HSAfoundation/CLOC.git
+git clone -b master https://github.com/HSAfoundation/cloc
 # Install
 mkdir -p /opt/amd/cloc
-sudo cp -rp ~/git/CLOC/ /opt/amd/cloc/
+# Copy everything till we get deb and rpm for cloc
+sudo cp -rp ~/git/cloc /opt/amd
 sudo ln -sf /opt/amd/cloc/bin/cloc.sh /usr/local/bin/cloc.sh
 sudo ln -sf /opt/amd/cloc/bin/snack.sh /usr/local/bin/snack.sh
 sudo ln -sf /opt/amd/cloc/bin/printhsail /usr/local/bin/printhsail
