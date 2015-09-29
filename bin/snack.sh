@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=0.9.5
+PROGVERSION=0.9.6
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -75,6 +75,7 @@ function usage(){
 
    Options without values:
     -c        Compile generated source code to create .o file
+    -g        Generate HSAIL debugger information 
     -hsail    Generate text hsail for manual optimization
     -version  Display version of snack then exit
     -v        Verbose messages
@@ -167,6 +168,7 @@ while [ $# -gt 0 ] ; do
       -noglobs)  	NOGLOBFUNS=1;;  
       -kstats)  	KSTATS=1;;  
       -str) 		MAKESTR=true;; 
+      -g) 		GEN_DEBUG=true;; 
       -hsail) 		GEN_IL=true;; 
       -opt) 		LLVMOPT=$2; shift ;; 
       -gccopt) 		GCCOPT=$2; shift ;; 
@@ -308,6 +310,11 @@ if [ $GEN_IL ] ; then
       exit $DEADRC
    fi
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -hsail"
+fi
+
+if [ $GEN_DEBUG ] ; then
+   export LIBHSAIL_OPTIONS_APPEND="-g -include-source"
+   OTHERCLOCFLAGS="$OTHERCLOCFLAGS -g"
 fi
 
 if [ $HSAIL_OPT_STEP2 ] ; then 

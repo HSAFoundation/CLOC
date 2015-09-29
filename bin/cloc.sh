@@ -5,7 +5,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=0.9.5
+PROGVERSION=0.9.6
 #
 # Copyright (c) 2014 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -54,6 +54,7 @@ function usage(){
    Usage: cloc.sh [ options ] filename.cl
 
    Options without values:
+    -g        Generate debug information
     -hsail    Generate dissassembled hsail from brig 
     -ll       Generate dissassembled ll from bc, for info only
     -version  Display version of cloc then exit
@@ -133,6 +134,7 @@ while [ $# -gt 0 ] ; do
       --keep) 		KEEPTDIR=true;; 
       -n) 		DRYRUN=true;; 
       -hsail) 		GEN_IL=true;; 
+      -g) 		GEN_DEBUG=true;; 
       -ll) 		GENLL=true;KEEPTDIR=true;; 
       -clopts) 		CLOPTS=$2; shift ;; 
       -I) 		INCLUDES="$INCLUDES -I $2"; shift ;; 
@@ -192,6 +194,9 @@ CMD_OPT=${CMD_OPT:-opt -O$LLVMOPT -gpu -whole}
 CMD_LLC=${CMD_LLC:-llc -O$LLVMOPT -march=hsail-64 -filetype=asm}
 CMD_BRI=${CMD_BRI:-HSAILasm}
 CMD_ASM=${CMD_ASM:-HSAILasm -disassemble}
+if [ $GEN_DEBUG ]  ; then 
+   export LIBHSAIL_OPTIONS_APPEND="-g -include-source"
+fi
 
 RUNDATE=`date`
 
