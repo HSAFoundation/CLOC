@@ -1,7 +1,7 @@
-Cloc 0.9.2 Install Instructions
+Cloc Install Instructions
 ===============================
 
-Warning.  These instructions are for HSA 1.0F .
+Warning.  These instructions are for HSA 1.0.3 (September 2015 Update) .
 
 The Cloc utility consists of three bash scripts with file names "cloc.sh" ,  "snack.sh" , and "snk_genw.sh" . These are found in the bin directory of this repository. Copy these files to /opt/amd/cloc/bin.  To update to a new version of Cloc simply replace cloc.sh snack.sh,  and snk_genw.sh in directory /opt/amd/cloc/bin.
 
@@ -56,9 +56,7 @@ Execute these commands:
 ```
 cd ~/git
 git clone https://github.com/HSAfoundation/HSA-Drivers-Linux-AMD.git
-sudo dpkg -i HSA-Drivers-Linux-AMD/kfd-1.2/ubuntu/*.deb
-echo "KERNEL==\"kfd\", MODE=\"0666\"" | sudo tee /etc/udev/rules.d/kfd.rules
-sudo cp HSA-Drivers-Linux-AMD/kfd-1.2/libhsakmt.so.1 /opt/hsa/lib
+sudo dpkg -i HSA-Drivers-Linux-AMD/kfd-1.6/ubuntu/*.deb
 ```
 
 ## Reboot System
@@ -104,7 +102,7 @@ mkdir ~/git
 cd ~/git
 git clone https://github.com/HSAfoundation/HSA-Runtime-AMD.git
 cd HSA-Runtime-AMD/ubuntu
-sudo dpkg -i hsa-runtime_1.0_amd64.deb
+sudo dpkg -i hsa-runtime_1.0.3_amd64.deb
 ```
 
 ## Install and Test Cloc utility
@@ -115,8 +113,7 @@ cd ~/git
 git clone -b master https://github.com/HSAfoundation/CLOC.git
 # Install
 mkdir -p /opt/amd/cloc
-sudo cp -rp ~/git/CLOC/bin /opt/amd/cloc
-sudo cp -rp ~/git/CLOC/examples /opt/amd/cloc
+sudo cp -rp ~/git/CLOC/ /opt/amd/cloc/
 sudo ln -sf /opt/amd/cloc/bin/cloc.sh /usr/local/bin/cloc.sh
 sudo ln -sf /opt/amd/cloc/bin/snack.sh /usr/local/bin/snack.sh
 sudo ln -sf /opt/amd/cloc/bin/printhsail /usr/local/bin/printhsail
@@ -153,19 +150,23 @@ Future package installers (.deb and .rpm) will symbolically link them.
 
 ## Install Kalmar (C++AMP) HSA Compiler (OPTIONAL)
 
-SKIP THIS STEP TILL KALMAR IS PORTED TO 1.0F
+Instructions coming soon. 
 
 ## Install gcc OpenMP for HSA Compiler (OPTIONAL)
 
-SKIP THIS STEP TILL IT IS PORTED TO 1.0F
+Instructions coming soon. 
 
 ## Install Codeplay HSA Compiler (OPTIONAL)
 
-SKIP THIS STEP TILL IT IS PORTED TO 1.0F
+Instructions coming soon. 
 
 ## Install Pathscale HSA Compiler (OPTIONAL)
 
-SKIP THIS STEP TILL IT IS PORTED TO 1.0F
+Instructions coming soon. 
+
+## Install HSAIL Debugger and Profiler 
+
+Instructions coming soon. 
 
 
 <A Name="Infiniband">
