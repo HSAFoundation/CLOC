@@ -7,7 +7,7 @@
 #  TODO: Add Python, boost, clSparse, Kokkos
 #  Please contact Greg if you want your HSA tool added to this list
 #
-PROGVERSION=0.1.2
+PROGVERSION=0.1.3
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -265,16 +265,16 @@ else
    opencc_date="  "
 fi
 
-kalmar_name="MCW Kalmar Compiler"
-fname="/opt/kalmar/bin/clang++"
+hcc_name="MCW hcc compiler"
+fname="/opt/hcc/bin/clang++"
 if [ -f $fname ] ; then
-   kalmar_ver=`/opt/kalmar/bin/clang++ --version 2>&1  | grep Kalmar   | cut -d" " -f9`
+   hcc_ver=`/opt/hcc/bin/clang++ --version 2>&1  | grep HCC | cut -d" " -f9`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
-   kalmar_date="$day"
-   kalmar_loc=$fname
+   hcc_date="$day"
+   hcc_loc=$fname
 else
-   kalmar_ver="MISSING"
-   kalmar_date="  "
+   hcc_ver="MISSING"
+   hcc_date="  "
 fi
 
 if [ $COMMERCIAL ] || [ $PRINTALL ] ; then 
@@ -405,7 +405,7 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$firmwa_name" "$firmwa_ver" "$firmwa_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$linuxm_name" "$linuxm_ver" "$linuxm_date" "kernel" "$linuxm_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$amdkfd_name" "$amdkfd_ver" "$amdkfd_date" "kernel" "$amdkfd_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsartm_name" "$hsartm_ver" "$hsartm_date" "runtime" "$hsartm_loc"
-printf "%-22s	%-32s	%-11s %-9s %s\n" "$kalmar_name" "$kalmar_ver" "$kalmar_date" "compiler" "$kalmar_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hcc_name" "$hcc_ver" "$hcc_date" "compiler" "$hcc_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$clocsh_name" "$clocsh_ver" "$clocsh_date" "compiler" "$clocsh_loc"
 [ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$atmitl_name" "$atmitl_ver" "$atmitl_date" "compiler" "$atmitl_loc"
@@ -434,7 +434,7 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$firmwa_name" "$firmwa_ver" "$firmwa_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$linuxm_name" "$linuxm_ver" "$linuxm_date" "kernel" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$amdkfd_name" "$amdkfd_ver" "$amdkfd_date" "kernel" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsartm_name" "$hsartm_ver" "$hsartm_date" "runtime" 
-printf "%-22s	%-32s	%-11s %-9s %s\n" "$kalmar_name" "$kalmar_ver" "$kalmar_date" "compiler" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$hcc_name" "$hcc_ver" "$hcc_date" "compiler" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$clocsh_name" "$clocsh_ver" "$clocsh_date" "compiler" 
 [ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$atmitl_name" "$atmitl_ver" "$atmitl_date" "compiler" 
