@@ -321,7 +321,7 @@ codexl_name="AMD CodeXL "
 dpkg-query -s amdcodexl 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
    codexl_ver=`dpkg-query -s amdcodexl | grep Version | cut -d" " -f2`
-   fname="/opt/AMD/CodeXL_1.8-9654/x86_64/sprofile"
+   fname="/opt/AMD/*/x86_64/sprofile"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    codexl_date="$day"
    codexl_loc=$fname
