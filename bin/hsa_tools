@@ -7,7 +7,7 @@
 #  TODO: Add Python, boost, clSparse, Kokkos
 #  Please contact Greg if you want your HSA tool added to this list
 #
-PROGVERSION=0.1.3
+PROGVERSION=0.1.4
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -305,10 +305,10 @@ else
 fi
 fi
 
-profil_name="AMD CodeXL Profiler"
+profil_name="HSAIL Profiler"
 fname="/opt/amd/sprofile/bin/sprofile"
 if [ -f $fname ] ; then
-   profil_ver=`/opt/amd/sprofile/bin/sprofile --version | cut -d" " -f9`
+   profil_ver=`$fname --version | cut -d" " -f9`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    profil_date="$day"
    profil_loc=$fname
@@ -317,10 +317,23 @@ else
    profil_date="  "
 fi
 
+codexl_name="AMD CodeXL "
+dpkg-query -s amdcodexl 2>/dev/null >/dev/null
+if [ $? == 0 ] ; then 
+   codexl_ver=`dpkg-query -s amdcodexl | grep Version | cut -d" " -f2`
+   fname="/opt/AMD/CodeXL_1.8-9654/x86_64/sprofile"
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   codexl_date="$day"
+   codexl_loc=$fname
+else
+   codexl_ver="MISSING"
+   codexl_date="  "
+fi
+
 debugr_name="AMD HSAIL debugger"
-fname="/opt/amd/hsa-debugger/AMDHsailGdb-v0.5/bin/x86_64/hsail-gdb"
+fname="/opt/amd/hsa-debugger/AMDHsailGdb/bin/x86_64/hsail-gdb"
 if [ -f $fname ] ; then
-   debugr_ver=`/opt/amd/hsa-debugger/AMDHsailGdb-v0.5/bin/x86_64/hsail-gdb --version 2>&1 | grep hsail-gdb | cut -d" " -f3`
+   debugr_ver=`$fname --version 2>&1 | grep hsail-gdb | cut -d" " -f3`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    debugr_date="$day "
    debugr_loc=$fname
@@ -421,6 +434,7 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencl_name" "$opencl_ver" "$opencl_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "utility" "$llvmbe_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsaila_name" "$hsaila_ver" "$hsaila_date" "utility" "$hsaila_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$profil_name" "$profil_ver" "$profil_date" "tool" "$profil_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$codexl_name" "$codexl_ver" "$codexl_date" "tool" "$codexl_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$debugr_name" "$debugr_ver" "$debugr_date" "tool" "$debugr_loc"
 [ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsainf_name" "$hsainf_ver" "$hsainf_date" "tool" "$hsainf_loc"
@@ -450,6 +464,7 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencl_name" "$opencl_ver" "$opencl_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "utility" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsaila_name" "$hsaila_ver" "$hsaila_date" "utility" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$profil_name" "$profil_ver" "$profil_date" "tool" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$codexl_name" "$codexl_ver" "$codexl_date" "tool" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$debugr_name" "$debugr_ver" "$debugr_date" "tool" 
 [ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsainf_name" "$hsainf_ver" "$hsainf_date" "tool" 
