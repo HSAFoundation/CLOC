@@ -5,14 +5,13 @@
 #
 #  Set HSA Environment variables
 [ -z $HSA_RUNTIME_PATH ] && HSA_RUNTIME_PATH=/opt/hsa
-[ -z $HSA_LLVM_PATH ] && HSA_LLVM_PATH=/opt/amd/cloc/bin
 export LD_LIBRARY_PATH=$HSA_RUNTIME_PATH/lib
 
 # Compile accelerated functions
 echo 
 if [ -f matmulKernels.o ] ; then rm matmulKernels.o ; fi
-echo $HSA_LLVM_PATH/snack.sh -c -opt 3 -vv  matmulKernels.cl 
-$HSA_LLVM_PATH/snack.sh -c -opt 3 -vv  matmulKernels.cl 
+echo snack.sh -c -opt 3 -vv  matmulKernels.cl 
+snack.sh -c -opt 3 -vv  matmulKernels.cl 
 
 # Compile Main .c  and link to accelerated functions in matmulKernels.o
 echo 

@@ -323,6 +323,33 @@ static hsa_status_t get_kernarg_memory_region(hsa_region_t region, void* data) {
     return HSA_STATUS_SUCCESS;
 }
 
+/* Find the global fine grained region */
+extern _CPPSTRING_ hsa_status_t find_global_region(hsa_region_t region, void* data)
+{
+         if(NULL == data)
+         {
+                 return HSA_STATUS_ERROR_INVALID_ARGUMENT;
+         }
+ 
+         hsa_status_t err;
+         hsa_region_segment_t segment;
+         uint32_t flag;
+ 
+         err = hsa_region_get_info(region, HSA_REGION_INFO_SEGMENT, &segment);
+         ErrorCheck(Getting Region Info, err);
+ 
+         err = hsa_region_get_info(region, HSA_REGION_INFO_GLOBAL_FLAGS, &flag);
+         ErrorCheck(Getting Region Info, err);
+ 
+         if((HSA_REGION_SEGMENT_GLOBAL == segment) && (flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED))
+         {
+                 *((hsa_region_t*)data) = region;
+         }
+ 
+         return HSA_STATUS_SUCCESS;
+}
+
+
 /* Stream specific globals */
 hsa_queue_t* Stream_CommandQ[SNK_MAX_STREAMS];
 static int          SNK_NextTaskId = 0 ;
@@ -332,6 +359,7 @@ hsa_agent_t                      __CN__Agent;
 hsa_ext_program_t                __CN__HsaProgram;
 hsa_executable_t                 __CN__Executable;
 hsa_region_t                     __CN__KernargRegion;
+hsa_region_t                     __CN__GlobalRegion;
 int                              __CN__FC = 0; 
 
 /* Global variables */
@@ -406,6 +434,11 @@ status_t __CN__InitContext(){
     err = (__CN__KernargRegion.handle == (uint64_t)-1) ? HSA_STATUS_ERROR : HSA_STATUS_SUCCESS;
     ErrorCheck(Finding a kernarg memory region, err);
 
+    /* Find the global region to support malloc_global */
+    hsa_agent_iterate_regions(__CN__Agent, find_global_region,  &__CN__GlobalRegion);
+    err = (__CN__GlobalRegion.handle == (uint64_t)-1) ? HSA_STATUS_ERROR : HSA_STATUS_SUCCESS;
+    ErrorCheck(Finding Global Region, err);
+
     /*  Create a queue using the maximum size.  */
     err = hsa_queue_create(__CN__Agent, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &Sync_CommandQ);
     ErrorCheck(Creating the queue, err);
@@ -425,6 +458,19 @@ status_t __CN__InitContext(){
     return STATUS_SUCCESS;
 } /* end of __CN__InitContext */
 
+extern void*  malloc_global(size_t sz) {
+    void* temp_pointer;
+    if (__CN__FC == 0 ) {
+       status_t status = __CN__InitContext();
+       if ( status  != STATUS_SUCCESS ) return; 
+       __CN__FC = 1;
+    }
+    hsa_status_t err;
+    err = hsa_memory_allocate(__CN__GlobalRegion, sz, (void**)&temp_pointer);
+    ErrorCheck(Find Global Region Error,err);
+    return temp_pointer; 
+}
+
 EOF
 }
 
@@ -440,6 +486,7 @@ uint64_t                         _KN__Kernel_Object;
 uint32_t                         _KN__Kernarg_Segment_Size; /* May not need to be global */
 uint32_t                         _KN__Group_Segment_Size;
 uint32_t                         _KN__Private_Segment_Size;
+void*                            _KN__KernargAddress; 
 
 EOF
 }
@@ -470,6 +517,9 @@ extern status_t _KN__init(const int printStats){
     ErrorCheck(Extracting the group segment size from the executable, err);
     err = hsa_executable_symbol_get_info(_KN__Symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_PRIVATE_SEGMENT_SIZE, &_KN__Private_Segment_Size);
     ErrorCheck(Extracting the private segment from the executable, err);
+
+    err =  hsa_memory_allocate(__CN__KernargRegion,_KN__Kernarg_Segment_Size, (void**)&_KN__KernargAddress); 
+    ErrorCheck(Allocating Kernel Arge Space, err);
 
     if (printStats == 1) {
        printf("Post-finalization statistics for kernel: _KN_ \n" );
@@ -568,9 +618,8 @@ function write_kernel_template(){
        this_aql->workgroup_size_z=1;
     }
 
-	/* thisKernargAddress has already been set up in the beginning of this routine */
     /*  Bind kernel argument buffer to the aql packet.  */
-    this_aql->kernarg_address = (void*) thisKernargAddress;
+    this_aql->kernarg_address = (void*) _KN__args;
     this_aql->kernel_object = _KN__Kernel_Object;
     this_aql->private_segment_size = _KN__Private_Segment_Size;
     this_aql->group_segment_size = group_base; /* group_base includes static and dynamic group space */
@@ -828,14 +877,8 @@ __SEDCMD=" "
       echo "     ${__KN}_FK = 1; " >> $__CWRAP
       echo "   } " >> $__CWRAP
 #     Write the structure definition for the kernel arguments.
-#     Consider eliminating global _KN__args and memcopy and write directly to thisKernargAddress.
-#     by writing these statements here:
       echo "   /* Allocate the kernel argument buffer from the correct region. */ " >> $__CWRAP
-      echo "   void* thisKernargAddress; " >> $__CWRAP
-      echo "   /* HSA 1.0F has a bug that serializes all queue operations when hsa_memory_allocate is used. " >> $__CWRAP
-	  echo "	  Revert back to hsa_memory_allocate once bug is fixed. */ " >> $__CWRAP
-	  echo "   thisKernargAddress = malloc(${__KN}_Kernarg_Segment_Size); " >> $__CWRAP
-	  #echo "   hsa_memory_allocate(${__SN}_KernargRegion, ${__KN}_Kernarg_Segment_Size, &thisKernargAddress); " >> $__CWRAP
+      echo "   hsa_status_t err;" >> $__CWRAP
 #     How to map a structure into an malloced memory area?
       echo "   size_t group_base ; " >>$__CWRAP
       echo "   group_base  = (size_t) ${__KN}_Group_Segment_Size;" >>$__CWRAP
@@ -879,9 +922,11 @@ __SEDCMD=" "
          NEXTI=$(( NEXTI + 1 ))
       done
       echo "   } __attribute__ ((aligned (16))) ; "  >> $__CWRAP
-      echo "   struct ${__KN}_args_struct* ${__KN}_args ; "  >> $__CWRAP
-	  echo "   /* Setup kernel args */ " >> $__CWRAP
-	  echo "   ${__KN}_args = (struct ${__KN}_args_struct*) thisKernargAddress; " >> $__CWRAP
+      echo "   struct ${__KN}_args_struct* ${__KN}_args = NULL; " >> $__CWRAP
+#      echo "   ${__KN}_args = (struct ${_KN}_args_struct\*) malloc(sizeof(struct ${__KN}_args_struct));" >> $__CWRAP
+#      echo "   struct ${__KN}_args_struct* ${__KN}_args ; "  >> $__CWRAP
+      echo "   /* Setup kernel args */ " >> $__CWRAP
+      echo "   ${__KN}_args = (struct ${__KN}_args_struct*) ${__KN}_KernargAddress; " >> $__CWRAP
 
 #     Write statements to fill in the argument structure and 
 #     keep track of updated CL arg list and new call list 
@@ -975,6 +1020,7 @@ __SEDCMD=" "
 #  END OF WHILE LOOP TO PROCESS EACH KERNEL IN THE CL FILE
    done < $__KARGLIST
 
+   echo "extern _CPPSTRING_ void* malloc_global(size_t sz);" >>$__HDRF
 
    if [ "$__IS_FORTRAN" == "1" ] ; then 
       write_fortran_lparm_t

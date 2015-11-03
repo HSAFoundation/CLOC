@@ -21,7 +21,7 @@
 // 
 //     * Redistributions of source code must retain the above copyright notice,
 //       this list of conditions and the following disclaimers.
-// 
+//
 //     * Redistributions in binary form must reproduce the above copyright notice,
 //       this list of conditions and the following disclaimers in the
 //       documentation and/or other materials provided with the distribution.
@@ -47,11 +47,12 @@ using namespace std;
 #include "CSquares.h"
 
 static const int NUMELEMENTS = 40;
-float *inArray = new float[NUMELEMENTS];
-float *outArray = new float[NUMELEMENTS];
-
-
 int main(int argc, char *argv[]) {
+
+        /* snack 0.9.7 has a malloc_global for device global memory */
+        float*inArray = (float*) malloc_global(NUMELEMENTS*sizeof(float));
+        float*outArray = (float*) malloc_global(NUMELEMENTS*sizeof(float));
+
 	// initialize inArray
 	for (int i=0; i<NUMELEMENTS; i++) {inArray[i] = (float)i; }
 	

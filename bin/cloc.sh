@@ -5,7 +5,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=0.9.6
+PROGVERSION=0.9.7
 #
 # Copyright (c) 2014 ADVANCED MICRO DEVICES, INC.  
 # 
