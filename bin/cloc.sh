@@ -373,13 +373,15 @@ if [ "$HSAILLIB" != "" ] ; then
       cmd="/bin/sed -e ""/${sedstring}/,/;/d"" "
       $cmd $TMPDIR/$FNAME.hsail >$noprogfile
       # Piece together final hsail with header, HSAILLIB, and remaining hsail
-      cmd="sed -e ""/^decl\sprog\sfunction\s&abort()/,\$d "" "
+      #  Keep only up to extension "IMAGE";
+      cmd="sed -n ""1,/extension\s\"IMAGE\";/p"" "
       $cmd $noprogfile >$finalfile
       echo "//  START of HSAILLIB $HSAILLIB" >>$finalfile
       cat $HSAILLIB >>$finalfile
       echo "//  END of HSAILLIB $HSAILLIB" >>$finalfile
-      cmd="sed -e ""1,/^decl\sprog\sfunction\s&abort()/d"" "
       echo "decl prog function &abort()();" >>$finalfile
+      #  Keep everything after "prog kernel" 
+      cmd="sed -n ""/^prog\skernel/,\$p "" "
       $cmd $noprogfile >>$finalfile
       cp $finalfile $TMPDIR/$FNAME.hsail
       rm $finalfile
