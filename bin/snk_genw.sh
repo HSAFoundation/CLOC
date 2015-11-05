@@ -117,6 +117,7 @@ function write_header_template(){
 #endif
 #ifndef __SNK_DEFS
 #define SNK_MAX_STREAMS 8 
+#define SNK_MAX_KERNARGS 1024
 extern _CPPSTRING_ void stream_sync(const int stream_num);
 
 #define SNK_ORDERED 1
@@ -243,7 +244,7 @@ void barrier_sync(int stream_num, snk_task_t *dep_task_list) {
 
 extern void stream_sync(int stream_num) {
     /* This is a user-callable function that puts a barrier packet into a queue where
-       all former dispatch packets were put on the queue for asynchronous asynchrnous 
+       all former dispatch packets were put on the queue for asynchronous asynchronous 
        executions. This routine will wait for all packets to complete on this queue.
     */
 
@@ -483,10 +484,13 @@ int                              _KN__FK = 0 ;
 status_t                         _KN__init(const int printStats);
 status_t                         _KN__stop();
 uint64_t                         _KN__Kernel_Object;
-uint32_t                         _KN__Kernarg_Segment_Size; /* May not need to be global */
 uint32_t                         _KN__Group_Segment_Size;
 uint32_t                         _KN__Private_Segment_Size;
+
+uint32_t                         _KN__Kernarg_Segment_Size; 
 void*                            _KN__KernargAddress; 
+uint32_t                         _KN__KernargRear; 
+uint32_t                         _KN__KernargFront; 
 
 EOF
 }
@@ -518,8 +522,10 @@ extern status_t _KN__init(const int printStats){
     err = hsa_executable_symbol_get_info(_KN__Symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_PRIVATE_SEGMENT_SIZE, &_KN__Private_Segment_Size);
     ErrorCheck(Extracting the private segment from the executable, err);
 
-    err =  hsa_memory_allocate(__CN__KernargRegion,_KN__Kernarg_Segment_Size, (void**)&_KN__KernargAddress); 
+    err =  hsa_memory_allocate(__CN__KernargRegion,( _KN__Kernarg_Segment_Size * SNK_MAX_KERNARGS), (void**)&_KN__KernargAddress); 
     ErrorCheck(Allocating Kernel Arge Space, err);
+    _KN__KernargRear = -1; 
+    _KN__KernargFront = -1; 
 
     if (printStats == 1) {
        printf("Post-finalization statistics for kernel: _KN_ \n" );
@@ -568,7 +574,7 @@ function write_kernel_template(){
 
     /*  Get stream number from launch parameters.       */
     /*  This must be less than SNK_MAX_STREAMS.         */
-    /*  If negative, then function call is synchrnous.  */
+    /*  If negative, then function call is synchronous.  */
     int stream_num = lparm->stream;
     if ( stream_num >= SNK_MAX_STREAMS )  {
        printf(" ERROR Stream number %d specified, must be less than %d \n", stream_num, SNK_MAX_STREAMS);
@@ -922,11 +928,26 @@ __SEDCMD=" "
          NEXTI=$(( NEXTI + 1 ))
       done
       echo "   } __attribute__ ((aligned (16))) ; "  >> $__CWRAP
+
       echo "   struct ${__KN}_args_struct* ${__KN}_args = NULL; " >> $__CWRAP
-#      echo "   ${__KN}_args = (struct ${_KN}_args_struct\*) malloc(sizeof(struct ${__KN}_args_struct));" >> $__CWRAP
-#      echo "   struct ${__KN}_args_struct* ${__KN}_args ; "  >> $__CWRAP
-      echo "   /* Setup kernel args */ " >> $__CWRAP
-      echo "   ${__KN}_args = (struct ${__KN}_args_struct*) ${__KN}_KernargAddress; " >> $__CWRAP
+#  
+#    FIXME:  Need a way to move KernargRear when any of these Kernels finish 
+#            Otherwise we never reuse the kernarg buffer.   
+#            If we can move KernargRear, careful not to let it ever equal KernargFront which would trigger queue full.
+#
+      echo "   /* Process circular queue of kernarg buffers */ " >> $__CWRAP
+      echo "   if ((${__KN}_KernargFront == -1) || (${__KN}_KernargFront == SNK_MAX_KERNARGS)) ${__KN}_KernargFront = 0 ; " >> $__CWRAP
+      echo "   if ( ${__KN}_KernargFront == ${__KN}_KernargRear ) { " >> $__CWRAP
+      echo "      /* printf(\"Warning! kernarg buffer overrun. Increase SNK_MAX_KERNARGS\n\"); */ " >> $__CWRAP
+      echo "      err = hsa_memory_allocate(_${__SN}_KernargRegion,( ${__KN}_Kernarg_Segment_Size * SNK_MAX_KERNARGS), (void**)&${__KN}_KernargAddress); " >> $__CWRAP
+      echo "      ErrorCheck(Allocating MORE Kernel Arg Space, err); " >> $__CWRAP
+      echo "      ${__KN}_KernargRear = ${__KN}_KernargFront = 0 ; " >> $__CWRAP
+      echo "   } ; " >> $__CWRAP
+      echo "   uint64_t karg_ptr = (uint64_t) ${__KN}_KernargAddress + (uint64_t)( ${__KN}_Kernarg_Segment_Size  * ${__KN}_KernargFront )  ;" >> $__CWRAP
+      echo "   ${__KN}_args = (struct ${__KN}_args_struct*) karg_ptr; " >> $__CWRAP
+#  Note: KernargFront points to the next slot to use
+      echo "   ${__KN}_KernargFront++;" >> $__CWRAP
+      echo "   if ( ${__KN}_KernargRear == -1) ${__KN}_KernargRear =  0 ; " >> $__CWRAP
 
 #     Write statements to fill in the argument structure and 
 #     keep track of updated CL arg list and new call list 
