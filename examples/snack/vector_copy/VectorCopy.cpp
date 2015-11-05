@@ -9,8 +9,8 @@ int main(int argc, char **argv)
 {
 
 	//Setup kernel arguments
-	int* in=(int*)malloc(1024*1024*4);
-	int* out=(int*)malloc(1024*1024*4);
+	int* in=(int*)malloc_global(1024*1024*4);
+	int* out=(int*)malloc_global(1024*1024*4);
 	memset(out, 0, 1024*1024*4);
 	memset(in, 1, 1024*1024*4);
 

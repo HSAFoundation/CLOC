@@ -172,6 +172,7 @@ EOF
 function write_global_functions_template(){
 /bin/cat  <<"EOF"
 
+
 void packet_store_release(uint32_t* packet, uint16_t header, uint16_t rest){
   __atomic_store_n(packet,header|(rest<<16),__ATOMIC_RELEASE);
 }
@@ -281,7 +282,69 @@ extern void stream_sync(int stream_num) {
 
     hsa_signal_destroy(signal);
 
-}  /* End of generated global functions */
+}  
+
+/* Find the global fine grained region */
+extern hsa_status_t find_global_region(hsa_region_t region, void* data)
+{
+         if(NULL == data) return HSA_STATUS_ERROR_INVALID_ARGUMENT;
+ 
+         hsa_status_t err;
+         hsa_region_segment_t segment;
+         uint32_t flag;
+ 
+         err = hsa_region_get_info(region, HSA_REGION_INFO_SEGMENT, &segment);
+         ErrorCheck(Getting Region Info, err);
+ 
+         err = hsa_region_get_info(region, HSA_REGION_INFO_GLOBAL_FLAGS, &flag);
+         ErrorCheck(Getting Region Info, err);
+ 
+         if((HSA_REGION_SEGMENT_GLOBAL == segment) && (flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED)) {
+                 *((hsa_region_t*)data) = region;
+         }
+ 
+         return HSA_STATUS_SUCCESS;
+}
+
+status_t SNACK_Init(){
+
+    hsa_status_t err;
+    hsa_agent_t thisAgent;
+    HSA_FC = 1;
+
+    err = hsa_init();
+    ErrorCheck(Initializing the hsa runtime, err);
+
+    /* Iterate over the agents and pick the gpu agent */
+    err = hsa_iterate_agents(get_gpu_agent, &thisAgent);
+    if(err == HSA_STATUS_INFO_BREAK) { err = HSA_STATUS_SUCCESS; }
+    ErrorCheck(Getting a gpu agent, err);
+
+    /* Find the global region to support malloc_global */
+    hsa_agent_iterate_regions(thisAgent, find_global_region, &HSA_GlobalRegion);
+    err = (HSA_GlobalRegion.handle == (uint64_t)-1) ? HSA_STATUS_ERROR : HSA_STATUS_SUCCESS;
+    ErrorCheck(Finding Global Region, err);
+
+}
+
+extern void free_global(void* free_pointer) {
+    hsa_status_t err;
+    err = hsa_memory_free(free_pointer);
+    ErrorCheck(free_global failed hsa_memory_free,err);
+    return ; 
+}
+
+extern void*  malloc_global(size_t sz) {
+    void* temp_pointer;
+    if (HSA_FC == 0) SNACK_Init();
+    hsa_status_t err;
+    err = hsa_memory_allocate(HSA_GlobalRegion, sz, (void**)&temp_pointer);
+    ErrorCheck(malloc_global failed hsa_memory_allocate,err);
+    return temp_pointer; 
+}
+
+/* End of generated global functions */
+
 EOF
 } # end of bash function write_global_functions_template() 
 
@@ -330,32 +393,9 @@ static hsa_status_t get_kernarg_memory_region(hsa_region_t region, void* data) {
     return HSA_STATUS_SUCCESS;
 }
 
-/* Find the global fine grained region */
-extern _CPPSTRING_ hsa_status_t find_global_region(hsa_region_t region, void* data)
-{
-         if(NULL == data)
-         {
-                 return HSA_STATUS_ERROR_INVALID_ARGUMENT;
-         }
- 
-         hsa_status_t err;
-         hsa_region_segment_t segment;
-         uint32_t flag;
- 
-         err = hsa_region_get_info(region, HSA_REGION_INFO_SEGMENT, &segment);
-         ErrorCheck(Getting Region Info, err);
- 
-         err = hsa_region_get_info(region, HSA_REGION_INFO_GLOBAL_FLAGS, &flag);
-         ErrorCheck(Getting Region Info, err);
- 
-         if((HSA_REGION_SEGMENT_GLOBAL == segment) && (flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED))
-         {
-                 *((hsa_region_t*)data) = region;
-         }
- 
-         return HSA_STATUS_SUCCESS;
-}
-
+/* Global across all contexts */
+static hsa_region_t HSA_GlobalRegion;
+static int HSA_FC = 0 ;
 
 /* Stream specific globals */
 hsa_queue_t* Stream_CommandQ[SNK_MAX_STREAMS];
@@ -366,7 +406,6 @@ hsa_agent_t                      __CN__Agent;
 hsa_ext_program_t                __CN__HsaProgram;
 hsa_executable_t                 __CN__Executable;
 hsa_region_t                     __CN__KernargRegion;
-hsa_region_t                     __CN__GlobalRegion;
 int                              __CN__FC = 0; 
 
 /* Global variables */
@@ -374,12 +413,13 @@ hsa_queue_t*                     Sync_CommandQ;
 hsa_signal_t                     Sync_Signal; 
 #include "_CN__brig.h" 
 
+status_t SNACK_Init();
+
 status_t __CN__InitContext(){
 
     hsa_status_t err;
 
-    err = hsa_init();
-    ErrorCheck(Initializing the hsa runtime, err);
+    if (HSA_FC == 0) SNACK_Init();
 
     /* Iterate over the agents and pick the gpu agent */
     err = hsa_iterate_agents(get_gpu_agent, &__CN__Agent);
@@ -441,10 +481,6 @@ status_t __CN__InitContext(){
     err = (__CN__KernargRegion.handle == (uint64_t)-1) ? HSA_STATUS_ERROR : HSA_STATUS_SUCCESS;
     ErrorCheck(Finding a kernarg memory region, err);
 
-    /* Find the global region to support malloc_global */
-    hsa_agent_iterate_regions(__CN__Agent, find_global_region,  &__CN__GlobalRegion);
-    err = (__CN__GlobalRegion.handle == (uint64_t)-1) ? HSA_STATUS_ERROR : HSA_STATUS_SUCCESS;
-    ErrorCheck(Finding Global Region, err);
 
     /*  Create a queue using the maximum size.  */
     err = hsa_queue_create(__CN__Agent, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &Sync_CommandQ);
@@ -465,31 +501,6 @@ status_t __CN__InitContext(){
     return STATUS_SUCCESS;
 } /* end of __CN__InitContext */
 
-extern void free_global(void* free_pointer) {
-    void* temp_pointer;
-    if (__CN__FC == 0 ) {
-       status_t status = __CN__InitContext();
-       if ( status  != STATUS_SUCCESS ) return; 
-       __CN__FC = 1;
-    }
-    hsa_status_t err;
-    err = hsa_memory_free(free_pointer);
-    ErrorCheck(free_global failed hsa_memory_free,err);
-    return ; 
-}
-
-extern void*  malloc_global(size_t sz) {
-    void* temp_pointer;
-    if (__CN__FC == 0 ) {
-       status_t status = __CN__InitContext();
-       if ( status  != STATUS_SUCCESS ) return; 
-       __CN__FC = 1;
-    }
-    hsa_status_t err;
-    err = hsa_memory_allocate(__CN__GlobalRegion, sz, (void**)&temp_pointer);
-    ErrorCheck(malloc_global failed hsa_memory_allocate,err);
-    return temp_pointer; 
-}
 
 EOF
 }

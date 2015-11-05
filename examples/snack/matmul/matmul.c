@@ -53,26 +53,26 @@ int main(int argc, char* argv[]){
    A.width = a2;
    A.stride = (((A.width-1)/BLOCK_SIZE)+1) * BLOCK_SIZE;
    A.hpad = (((A.height-1)/BLOCK_SIZE)+1) * BLOCK_SIZE;
-   A.elements = (float*)malloc(A.stride * A.hpad* sizeof(float));
+   A.elements = (float*)malloc_global(A.stride * A.hpad* sizeof(float));
 
    B.height = a2;
    B.width = a3;
    B.stride = (((B.width-1)/BLOCK_SIZE)+1) * BLOCK_SIZE;
    B.hpad = (((B.height-1)/BLOCK_SIZE)+1) * BLOCK_SIZE;
-   B.elements = (float*)malloc(B.stride * B.hpad * sizeof(float));
+   B.elements = (float*)malloc_global(B.stride * B.hpad * sizeof(float));
 
    /* Bt is same as B but stored in column-major order */
    Bt.height = B.height; 
    Bt.width = B.width;
    Bt.stride = B.stride;
    Bt.hpad = B.hpad;
-   Bt.elements = (float*)malloc(Bt.stride * Bt.hpad * sizeof(float));
+   Bt.elements = (float*)malloc_global(Bt.stride * Bt.hpad * sizeof(float));
 
    C.height = a1;
    C.width = a3;
    C.stride = (((C.width-1)/BLOCK_SIZE)+1) * BLOCK_SIZE;
    C.hpad = (((C.height-1)/BLOCK_SIZE)+1) * BLOCK_SIZE;
-   C.elements = (float*)malloc(C.stride * C.hpad * sizeof(float));
+   C.elements = (float*)malloc_global(C.stride * C.hpad * sizeof(float));
 
    for(i = 0; i < A.hpad ; i++)
       for(j = 0; j < A.stride; j++) {

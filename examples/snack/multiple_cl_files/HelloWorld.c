@@ -9,9 +9,9 @@
 int main(int argc, char* argv[]) {
 	char* input = "Gdkkn\x1FGR@\x1FVnqkc";
 	size_t strlength = strlen(input);
-	char *output = (char*) malloc(strlength + 1);
-	char *secode = (char*) malloc(strlength + 1);
-	char *output2 = (char*) malloc(strlength + 1);
+	char *output = (char*) malloc_global(strlength + 1);
+	char *secode = (char*) malloc_global(strlength + 1);
+	char *output2 = (char*) malloc_global(strlength + 1);
 
         /*
            Here we show how to initialize the kernel. It is not really 
