@@ -47,11 +47,21 @@ using namespace std;
 #include "CSquares.h"
 
 static const int NUMELEMENTS = 40;
+
 int main(int argc, char *argv[]) {
 
-        /* snack 0.9.7 has a malloc_global for device global memory */
+       /* original way 
+       float *inArray = new float[NUMELEMENTS];
+       float *outArray = new float[NUMELEMENTS];
+       */
+
+       float *inArray = NEW_GLOBAL(float,NUMELEMENTS);
+       float *outArray = NEW_GLOBAL(float,NUMELEMENTS);
+
+       /* New alternative 
         float*inArray = (float*) malloc_global(NUMELEMENTS*sizeof(float));
         float*outArray = (float*) malloc_global(NUMELEMENTS*sizeof(float));
+       */
 
 	// initialize inArray
 	for (int i=0; i<NUMELEMENTS; i++) {inArray[i] = (float)i; }
@@ -65,6 +75,14 @@ int main(int argc, char *argv[]) {
 		if (outArray[i] != i*i) passed = false;
 	}
  	cout << endl << (passed ? "PASSED" : "FAILED") << endl;
+
+        DELETE_GLOBAL(inArray);
+        DELETE_GLOBAL(outArray);
+        /* New alternative 
+        free_global(inArray);
+        free_global(outArray);
+        */
+
 	return 0;
 }
 

@@ -148,6 +148,12 @@ struct snk_lparm_s {
 /* This string macro is used to declare launch parameters set default values  */
 #define SNK_INIT_LPARM(X,Y) snk_lparm_t * X ; snk_lparm_t  _ ## X ={.ndim=1,.gdims={Y},.ldims={64},.stream=-1,.barrier=SNK_UNORDERED,.acquire_fence_scope=2,.release_fence_scope=2} ; X = &_ ## X ;
  
+extern _CPPSTRING_ void* malloc_global(size_t sz);
+extern _CPPSTRING_ void free_global(void* ptr);
+
+#define NEW_GLOBAL(X,Y) (X*)malloc_global(sizeof(X)*Y)
+#define DELETE_GLOBAL(X) free_global(X)
+
 /* Equivalent host data types for kernel data types */
 typedef struct snk_image3d_s snk_image3d_t;
 struct snk_image3d_s { 
@@ -459,6 +465,19 @@ status_t __CN__InitContext(){
     return STATUS_SUCCESS;
 } /* end of __CN__InitContext */
 
+extern void free_global(void* free_pointer) {
+    void* temp_pointer;
+    if (__CN__FC == 0 ) {
+       status_t status = __CN__InitContext();
+       if ( status  != STATUS_SUCCESS ) return; 
+       __CN__FC = 1;
+    }
+    hsa_status_t err;
+    err = hsa_memory_free(free_pointer);
+    ErrorCheck(free_global failed hsa_memory_free,err);
+    return ; 
+}
+
 extern void*  malloc_global(size_t sz) {
     void* temp_pointer;
     if (__CN__FC == 0 ) {
@@ -468,7 +487,7 @@ extern void*  malloc_global(size_t sz) {
     }
     hsa_status_t err;
     err = hsa_memory_allocate(__CN__GlobalRegion, sz, (void**)&temp_pointer);
-    ErrorCheck(Find Global Region Error,err);
+    ErrorCheck(malloc_global failed hsa_memory_allocate,err);
     return temp_pointer; 
 }
 
@@ -1041,7 +1060,6 @@ __SEDCMD=" "
 #  END OF WHILE LOOP TO PROCESS EACH KERNEL IN THE CL FILE
    done < $__KARGLIST
 
-   echo "extern _CPPSTRING_ void* malloc_global(size_t sz);" >>$__HDRF
 
    if [ "$__IS_FORTRAN" == "1" ] ; then 
       write_fortran_lparm_t
