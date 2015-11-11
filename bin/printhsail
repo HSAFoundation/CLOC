@@ -1,11 +1,82 @@
 #!/bin/bash
 #
-#  printhsail: Extract HSAIL from ELF executeable or brig file and write to stdout
-#              Assumes 64-bit ELF is executable binary or .o and 32-bit ELF is a brig file
+#  printhsail:  Extract brig or hsail embedded in ELF binary
+#               Requires the HSAILasm assembler/disassembler. 
+#               Requires binary has embedded brig using gcc6, snack, or HCC compilers
 #
-#  Written by Greg Rodgers.
+#  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
+PROGVERSION=0.9.8
+#
+# Copyright (c) 2014 ADVANCED MICRO DEVICES, INC.  
+# 
+# AMD is granting you permission to use this software and documentation (if any) (collectively, the 
+# Materials) pursuant to the terms and conditions of the Software License Agreement included with the 
+# Materials.  If you do not have a copy of the Software License Agreement, contact your AMD 
+# representative for a copy.
+# 
+# You agree that you will not reverse engineer or decompile the Materials, in whole or in part, except for 
+# example code which is provided in source code form and as allowed by applicable law.
+# 
+# WARRANTY DISCLAIMER: THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY 
+# KIND.  AMD DISCLAIMS ALL WARRANTIES, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING BUT NOT 
+# LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+# PURPOSE, TITLE, NON-INFRINGEMENT, THAT THE SOFTWARE WILL RUN UNINTERRUPTED OR ERROR-
+# FREE OR WARRANTIES ARISING FROM CUSTOM OF TRADE OR COURSE OF USAGE.  THE ENTIRE RISK 
+# ASSOCIATED WITH THE USE OF THE SOFTWARE IS ASSUMED BY YOU.  Some jurisdictions do not 
+# allow the exclusion of implied warranties, so the above exclusion may not apply to You. 
+# 
+# LIMITATION OF LIABILITY AND INDEMNIFICATION:  AMD AND ITS LICENSORS WILL NOT, 
+# UNDER ANY CIRCUMSTANCES BE LIABLE TO YOU FOR ANY PUNITIVE, DIRECT, INCIDENTAL, 
+# INDIRECT, SPECIAL OR CONSEQUENTIAL DAMAGES ARISING FROM USE OF THE SOFTWARE OR THIS 
+# AGREEMENT EVEN IF AMD AND ITS LICENSORS HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH 
+# DAMAGES.  In no event shall AMD's total liability to You for all damages, losses, and 
+# causes of action (whether in contract, tort (including negligence) or otherwise) 
+# exceed the amount of $100 USD.  You agree to defend, indemnify and hold harmless 
+# AMD and its licensors, and any of their directors, officers, employees, affiliates or 
+# agents from and against any and all loss, damage, liability and other expenses 
+# (including reasonable attorneys' fees), resulting from Your use of the Software or 
+# violation of the terms and conditions of this Agreement.  
+# 
+# U.S. GOVERNMENT RESTRICTED RIGHTS: The Materials are provided with "RESTRICTED RIGHTS." 
+# Use, duplication, or disclosure by the Government is subject to the restrictions as set 
+# forth in FAR 52.227-14 and DFAR252.227-7013, et seq., or its successor.  Use of the 
+# Materials by the Government constitutes acknowledgement of AMD's proprietary rights in them.
+# 
+# EXPORT RESTRICTIONS: The Materials may be subject to export restrictions as stated in the 
+# Software License Agreement.
+# 
+function usage(){
+/bin/cat 2>&1 <<"EOF" 
 
+   printhsail:  Extract brig or hsail embedded in binary
+                Requires the HSAILasm assembler/disassembler. 
+                Requires binary has embedded brig using gcc6, snack, or HCC compilers
+
+   Usage: printhsail [ options ] binary
+
+   Options without values:
+    -brig     Generate brig instead of hsail
+    -decode   Generate decoded operations instead of hsail
+    -version  Display version of cloc then exit
+    -v        Verbose messages to stderr
+    -h        Print this help message
+
+   Examples:
+    printhsail mybinary >mybinary.hsail
+    printhsail -brig mybinary >mybinary.brig
+    printhsail -decode mybinary >mybinary.decode
+
+   Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.
+
+EOF
+   exit 1 
+}
+
+function version(){
+   echo $PROGVERSION
+   exit 0
+}
 function getdname(){
    local __DIRN=`dirname "$1"`
    if [ "$__DIRN" = "." ] ; then 
@@ -26,67 +97,119 @@ function getdname(){
    echo $__DIRN
 }
 
-infile=$1
+#  --------  The main code starts here -----
+INCLUDES=""
+#  Argument processing
+while [ $# -gt 0 ] ; do 
+   case "$1" in 
+      -brig) 		GEN_BRIG=true;; 
+      -decode) 		GEN_DECODE=true;; 
+      -h) 		usage ;; 
+      -help) 		usage ;; 
+      --help) 		usage ;; 
+      -version) 	version ;; 
+      --version) 	version ;; 
+      -v) 		VERBOSE=true;; 
+      --version) 	version ;; 
+      --) 		shift ; break;;
+      -*) 		usage ;;
+      *) 		break;echo $1 ignored;
+   esac
+   shift
+done
+
+# The above while loop is exited when last string with a "-" is processed
+LASTARG=$1
+shift
+
+if [ ! -z $1 ]; then 
+   echo " " >&2
+   echo "WARNING:  printhsail can only process one binary file at a time." >&2
+   echo "          Argument $LASTARG will be processed. " >&2
+   echo "          These args are ignored: $@" >&2
+   echo " " >&2
+fi
+
+infile=$LASTARG
 tmpfile=/tmp/printhsail$$
 cloc_brigsym="HSA_BrigMem"
 cloc_brigszsym="HSA_BrigMemSz"
-kalmar_brigsym="_binary_kernel_brig_start"
-kalmar_brigszsym="_binary_kernel_brig_size"
+hcc_brigsym="_binary_kernel_brig_start"
+hcc_brigszsym="_binary_kernel_brig_size"
 gcc_brigsect=".brig"
 
-cdir=$(getdname $0)
-[ ! -L "$cdir/cloc.sh" ] || cdir=$(getdname `readlink "$cdir/cloc.sh"`)
-HSA_LLVM_PATH=${HSA_LLVM_PATH:-$cdir}
+if [ $GEN_DECODE ] ; then 
+   TYPE_ASM="-decode"
+else
+   TYPE_ASM="-disassemble"
+fi
 
-HSAIL_DISASSEMBLE=${HSAIL_DISASSEMBLE:-$HSA_LLVM_PATH/HSAILasm}
+HSAIL_DISASSEMBLE=`which HSAILasm`
+if [ $? != 0 ] ; then 
+   cdir=$(getdname $0)
+   [ ! -L "$cdir/cloc.sh" ] || cdir=$(getdname `readlink "$cdir/cloc.sh"`)
+   HSAIL_DISASSEMBLE=${cdir}/HSAILasm
+fi 
 
 if [ ! -f "$infile" ] ; then 
    echo "ERROR:  Input file \"$1\" does not exist "
    exit 1
 fi
+
 if [ ! -f "$HSAIL_DISASSEMBLE" ] ; then 
    echo "ERROR:  Missing HSAIL disassembler. $HSAIL_DISASSEMBLE"
    exit 1
 fi
+
 format=`file $infile | cut -d" " -f2-3`
 if [ "$format" == "ELF 64-bit" ] ; then 
+   [ $VERBOSE ] && echo "  File $infile is 64-bit ELF. " >&2
    readelf -S $infile | grep -q  "hsa_code" 
    if [ $? != 0 ] ; then 
+
       # no elf sections, so look for external data with brig from snack 
+      [ $VERBOSE ] && echo "  No hsa_code elf sections" >&2
       brigszloc=`nm $infile | grep $cloc_brigszsym | cut -d" " -f1 ` 
       if [ "$brigszloc" == "" ] ; then 
-         # no cloc brig symbol , looking for kalmar
-         brigszhex=`nm $infile | grep $kalmar_brigszsym | cut -d" " -f1 ` 
+
+         # no cloc brig symbol , looking for hcc
+         [ $VERBOSE ] && echo "  No snack symbol $cloc_brigszsym, looking for HCC" >&2
+         brigszhex=`nm $infile | grep $hcc_brigszsym | cut -d" " -f1 ` 
          if [ "$brigszhex" == "" ] ; then 
+
+            # no HCC brig symbol, looking for gcc
+            [ $VERBOSE ] && echo "  No HCC symbol $hcc_brigszsym, looking for GCC elf sections." >&2
             brigloc=`readelf -S -W $infile | grep $gcc_brigsect | awk '{print $5}'` 
             if [ "$brigloc" == "" ] ; then 
-               echo "ERROR:  No brig found in the binary of input elf file \"$1\" "
+               echo "ERROR:  No brig found in the binary of input elf file \"$infile\" "
                exit 1
             else
+               [ $VERBOSE ] && echo "  GCC elf section $gcc_brigsect found" >&2
                # gcc brig section found 
                brigszhex=`readelf -S -W $infile | grep $gcc_brigsect | awk '{print $6}'` 
                brigsz=$((0x$brigszhex))
                brigoff=$((0x$brigloc))
                dd if=$infile of=$tmpfile bs=1 count=$brigsz skip=$brigoff >/dev/null 2>/dev/null
                brigfile=$tmpfile
-               $HSAIL_DISASSEMBLE -disassemble $brigfile -o $tmpfile.hsail
+               [ $VERBOSE ] && echo "$HSAIL_DISASSEMBLE $TYPE_ASM $brigfile -o $tmpfile.hsail" >&2
+               $HSAIL_DISASSEMBLE $TYPE_ASM $brigfile -o $tmpfile.hsail
                rc=$?  
             fi
          else
-            # Kalmar brigszsym found
+            # HCC brigszsym found
             datastart=`readelf -S $infile | grep "\.data\.rel\.ro" | awk '{print $5}'`
             relstart=`readelf -S $infile | grep "\.data\.rel\.ro" | awk '{print $4}'`
-            brigloc=`nm $infile | grep $kalmar_brigsym | grep -v $kalmar_brigszsym | cut -d" " -f1 ` 
+            brigloc=`nm $infile | grep $hcc_brigsym | grep -v $hcc_brigszsym | cut -d" " -f1 ` 
             brigoff=$((0x$datastart + 0x$brigloc - 0x$relstart))
             brigsz=$((0x$brigszhex))
             #  Create the brig file by extracting the binary out of the applicaton elf
             dd if=$infile of=$tmpfile bs=1 count=$brigsz skip=$brigoff >/dev/null 2>/dev/null
             brigfile=$tmpfile
-            $HSAIL_DISASSEMBLE -disassemble $brigfile -o $tmpfile.hsail
+            $HSAIL_DISASSEMBLE $TYPE_ASM  $brigfile -o $tmpfile.hsail
             rc=$?  
          fi
       else
-         # cloc can have multiple brigs 
+         # snack can have multiple brigs 
          datastart=`readelf -S $infile | grep "\.data" | awk '{print $5}'`
          relstart=`readelf -S $infile | grep "\.data" | awk '{print $4}'`
          brigname_list=`nm $infile | grep $cloc_brigsym | grep -v $cloc_brigszsym | cut -d" " -f3 ` 
@@ -104,18 +227,18 @@ if [ "$format" == "ELF 64-bit" ] ; then
             if [ -f ${tmpfile}.hsail1 ] ; then 
                rm ${tmpfile}.hsail1
             fi
-            echo "     "  >&2
-            echo "==========  Extracting BRIG AND HSAIL for brigname $brigname =================" >&2
+            [ $VERBOSE ] && echo "     "  >&2
+            [ $VERBOSE ] && echo "==========  Extracting BRIG AND HSAIL for brigname $brigname =================" >&2
             dd if=$infile of=$tmpfile bs=1 count=$brigsz skip=$brigoff >/dev/null 2>/dev/null
-            echo "==========  Converting BRIG to HSAIL for brigname $brigname =================" >&2
-            $HSAIL_DISASSEMBLE -disassemble $tmpfile -o ${tmpfile}.hsail1
+            [ $VERBOSE ] && echo "==========  Converting BRIG to HSAIL for brigname $brigname =================" >&2
+            $HSAIL_DISASSEMBLE $TYPE_ASM $tmpfile -o ${tmpfile}.hsail1
             rc=$?
-            echo "==========  Done with brigname $brigname =======================" >&2
+            [ $VERBOSE ] && echo "==========  Done with brigname $brigname =======================" >&2
             if [ $rc == 0 ] ; then 
                cat $tmpfile.hsail1 >> ${tmpfile}.hsail
             fi
          done
-         echo "     "  >&2
+         [ $VERBOSE ] && echo "     "  >&2
          if [ -f $tmpfile.hsail1 ] ; then 
             rm $tmpfile.hsail1
          fi
@@ -127,7 +250,7 @@ if [ "$format" == "ELF 64-bit" ] ; then
       # Need to zero this byte to get HSAILasm to thing this is a real brig file
       printf '\x00\' | dd of=$tmpfile bs=1 seek=16 count=1 conv=notrunc >/dev/null 2>/dev/null
       brigfile=$tmpfile
-      $HSAIL_DISASSEMBLE -disassemble $brigfile -o $tmpfile.hsail
+      $HSAIL_DISASSEMBLE $TYPE_ASM $brigfile -o $tmpfile.hsail
       rc=$?
    fi
 elif [ "$format" == "ELF 32-bit" ] ; then 
@@ -138,7 +261,7 @@ elif [ "$format" == "ELF 32-bit" ] ; then
       exit 1
    fi
    brigfile=$infile
-   $HSAIL_DISASSEMBLE -disassemble $brigfile -o $tmpfile.hsail
+   $HSAIL_DISASSEMBLE $TYPE_ASM $brigfile -o $tmpfile.hsail
    rc=$?
 else
    echo "ERROR:  Input file \"$1\" must be ELF 64-bit or brig file"
@@ -146,12 +269,24 @@ else
 fi
 
 if [ $rc != 0 ] ; then 
-   exit $rc
+   echo " " 
+   echo "ERROR:  Brig translation to HSAIL failed."
+   echo "        Consider printhsail -decode option to debug embedded brig."
+   echo " " 
+else 
+   # Write either the brig or jsail to stdout
+   if [ $GEN_BRIG ] ; then 
+      cat $brigfile
+   else
+      cat $tmpfile.hsail
+   fi
 fi
-cat $tmpfile.hsail
 
 #  cleanup
 if [ -f $tmpfile ] ; then 
    rm $tmpfile
 fi
-rm $tmpfile.hsail
+if [ -f $tmpfile.hsail ] ; then 
+   rm $tmpfile.hsail
+fi
+
