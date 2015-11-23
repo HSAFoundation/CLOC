@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
         decode(input,output,lparm);
 	output[strlength] = '\0';
 	cout << output << endl;
-	free(output);
+	free_global(output);
 	return 0;
 
 }

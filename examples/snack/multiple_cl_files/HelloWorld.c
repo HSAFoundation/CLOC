@@ -40,8 +40,8 @@ int main(int argc, char* argv[]) {
 	decode(secode,output,lparm);
 	decode(output,output2,lparm);
 	printf("Decoded twice :%s\n",output2);
-	free(output);
-	free(secode);
-	free(output2);
+	free_global(output);
+	free_global(secode);
+	free_global(output2);
 	return 0;
 }

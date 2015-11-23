@@ -33,8 +33,8 @@ int main(int argc, char **argv)
 		printf("VALIDATION FAILED!\nBad index: %d\n", failIndex);
 
 
-	free(in);
-	free(out);
+	free_global(in);
+	free_global(out);
 
     return 0;
 }
