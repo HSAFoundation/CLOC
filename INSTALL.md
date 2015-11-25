@@ -20,17 +20,21 @@ In addition to the bash scripts, Cloc requires the HSA runtime and the HLC compi
 
 Make sure Ubuntu 14.04 LTS 64-bit version has been installed.  Ubunutu 14.04 is also known as trusty.  We recommend the server package set.  The utica version of ubuntu (14.10) has not been tested with HSA.  Then install these dependencies:
 ```
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
 sudo apt-get update
 sudo apt-get upgrade
+sudo apt-get install gcc-4.9
+sudo apt-get install g++-4.9
+sudo apt-get install gfortran-4.9
 sudo apt-get install git
 sudo apt-get install make
 sudo apt-get install g++
-sudo apt-get install libstdc++-4.8-dev
+sudo apt-get install gcc
+sudo apt-get install gfortran
 sudo apt-get install libelf
 sudo apt-get install libtinfo-dev
 sudo apt-get install re2c
 sudo apt-get install libbsd-dev
-sudo apt-get install gfortran
 sudo apt-get install build-essential 
 ```
 
@@ -149,21 +153,24 @@ sudo ln -sf /opt/amd/cloc/bin/printhsail /usr/local/bin/printhsail
 
 Future package installers (.deb and .rpm) will symbolically link them.
 
-## Install Kalmar (C++AMP) HSA Compiler (OPTIONAL)
+## Install HCC Compiler from Multicoreware  (OPTIONAL)
 
-Instructions coming soon. 
+```
+mkdir -p $HOME/debs
+cd $HOME/debs
+wget https://bitbucket.org/multicoreware/cppamp-driver-ng/downloads/hcc-0.8.1545-15f927e-ee0f474-183de0b-Linux.deb
+sudo dpkg -i hcc-0.8.1545-15f927e-ee0f474-183de0b-Linux.deb
+```
 
-## Install gcc OpenMP for HSA Compiler (OPTIONAL)
+## Install Development GCC6 OpenMP for HSA Compiler (OPTIONAL)
 
-Instructions coming soon. 
-
-## Install Codeplay HSA Compiler (OPTIONAL)
-
-Instructions coming soon. 
-
-## Install Pathscale HSA Compiler (OPTIONAL)
-
-Instructions coming soon. 
+```
+cd $HOME/git
+git clone -b master https://github.com/HSAfoundation/hsa-openmp-gcc-amd
+sudo rsync -av --exclude .git $HOME/git/hsa-openmp-gcc-amd/usr/local/hsagccver  /usr/local
+sudo rm -f /usr/local/hsagcc
+sudo rsync -av $HOME/git/hsa-openmp-gcc-amd/usr/local/hsagcc  /usr/local
+```
 
 ## Install HSAIL Debugger and Profiler 
 
@@ -182,18 +189,6 @@ http://www.mellanox.com/page/products_dyn?product_family=26
 2.4-1.0.4/Ubuntu/Ubuntu 14.10/x86_86/MLNX_OFED*.iso     
 ```
 <b>Ubuntu 14.10</b> is the one that needs to be downloaded to be able to build and install with the 3.17 and 3.19 kernels
-
-## Install gcc-4.9 
-
-The gcc-4.9 compiler is needed for some of the Mellanox tools which need libstdc++6 built with g++-4.9 or greater
-
-```
-sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-sudo apt-get update
-sudo apt-get install gcc-4.9
-sudo apt-get install g++-4.9
-sudo apt-get install gfortran-4.9
-```
 
 ## Install MLNX_OFED 
 
