@@ -4,11 +4,13 @@
 #include "hw.h"
 
 int main(int argc, char* argv[]) {
-	char* input = "Gdkkn\x1FGR@\x1FVnqkc";
-	size_t strlength = strlen(input);
+	char* input1 = "Gdkkn\x1FGR@\x1FVnqkc";
+	size_t strlength = strlen(input1);
+	char *input = (char*) malloc_global(strlength + 1);
 	char *output = (char*) malloc_global(strlength + 1);
 	char *secode = (char*) malloc_global(strlength + 1);
 	char *output2 = (char*) malloc_global(strlength + 1);
+	memcpy(input, input1, strlength+1);
 
         SNK_INIT_LPARM(lparm,strlength);
         decode(input,output,lparm);
