@@ -109,6 +109,30 @@ static hsa_status_t get_kernarg_memory_region(hsa_region_t region, void* data) {
     return HSA_STATUS_SUCCESS;
 }
 
+hsa_status_t find_global_region(hsa_region_t region, void* data){
+    if(NULL == data){
+        return HSA_STATUS_ERROR_INVALID_ARGUMENT;
+    }
+
+    hsa_status_t err;
+    hsa_region_segment_t segment;
+    uint32_t flag;
+
+    err = hsa_region_get_info(region, HSA_REGION_INFO_SEGMENT, &segment);
+    check(QUERY REGION SEGMENT INFO, err);
+
+    err = hsa_region_get_info(region, HSA_REGION_INFO_GLOBAL_FLAGS, &flag);
+    check(QUERY REGION FLAG INFO, err);
+
+    if((HSA_REGION_SEGMENT_GLOBAL == segment) && (flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED))
+    {
+        *((hsa_region_t*)data) = region;
+    }
+
+     return HSA_STATUS_SUCCESS;
+}
+
+
 
 int main(int argc, char **argv)
 {
@@ -237,15 +261,20 @@ int main(int argc, char **argv)
     /*
      * Allocate and initialize the kernel arguments.
      */
+    hsa_region_t global_region;
+    err=hsa_agent_iterate_regions(agent, find_global_region, &global_region);
+    check(FINDING GLOBAL REGION, err);
+
     uint64_t total_buffer_size = GRID_SIZE_X * sizeof(int);
-    int* in=(int*)malloc(total_buffer_size);
+    int* in;
+    err=hsa_memory_allocate(global_region, total_buffer_size, (void**)&in);
+    check(Allocating memory from global region, err);
     memset(in, 1, total_buffer_size); 
-    err=hsa_memory_register(in, total_buffer_size);
-    check(Registering argument memory for input parameter, err);
-    int* out=(int*)malloc(total_buffer_size);
+
+    int* out;
+    err=hsa_memory_allocate(global_region, total_buffer_size, (void**)&out);
+    check(Allocating memory from global region, err);
     memset(out, 0, total_buffer_size);
-    err=hsa_memory_register(out, total_buffer_size);
-    check(Registering argument memory for output parameter, err);
     //Variables for offset
     int offset = 0;
     /*
@@ -404,12 +433,15 @@ int main(int argc, char **argv)
 
     err=hsa_queue_destroy(queue);
     check(Destroying the queue, err);
+
+    err=hsa_memory_free(in);
+    check(Releasing memory allocated before, err);
+
+    err=hsa_memory_free(out);
+    check(Releasing memory allocated before, err);
     
     err=hsa_shut_down();
     check(Shutting down the runtime, err);
-
-    free(in);
-    free(out);
 
     return 0;
 }

@@ -109,6 +109,34 @@ static hsa_status_t get_kernarg_memory_region(hsa_region_t region, void* data) {
     return HSA_STATUS_SUCCESS;
 }
 
+/*
+ * Determines if a memory region is a fined grained global region
+ */
+
+hsa_status_t find_global_region(hsa_region_t region, void* data){
+    if(NULL == data){
+        return HSA_STATUS_ERROR_INVALID_ARGUMENT;
+    }
+ 
+    hsa_status_t err;
+    hsa_region_segment_t segment;
+    uint32_t flag;
+
+    err = hsa_region_get_info(region, HSA_REGION_INFO_SEGMENT, &segment);
+    check(QUERY REGION SEGMENT INFO, err);
+
+    err = hsa_region_get_info(region, HSA_REGION_INFO_GLOBAL_FLAGS, &flag);
+    check(QUERY REGION FLAG INFO, err);
+
+    if((HSA_REGION_SEGMENT_GLOBAL == segment) && (flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED))
+    {
+        *((hsa_region_t*)data) = region;
+    }
+ 
+     return HSA_STATUS_SUCCESS;
+}
+
+
 int main(int argc, char **argv) {
     hsa_status_t err;
 
@@ -241,15 +269,19 @@ int main(int argc, char **argv) {
     /*
      * Allocate and initialize the kernel arguments and data.
      */
-    char* in=(char*)malloc(GLOBAL_SIZE*4);
-    memset(in, 1, GLOBAL_SIZE*4);
-    err=hsa_memory_register(in, GLOBAL_SIZE*4);
-    check(Registering argument memory for input parameter, err);
+    hsa_region_t global_region;
+    err=hsa_agent_iterate_regions(agent, find_global_region, &global_region);
+    check(FINDING GLOBAL REGION, err);
 
-    char* out=(char*)malloc(GLOBAL_SIZE*4);
+    char* in;
+    err=hsa_memory_allocate(global_region, GLOBAL_SIZE*4, (void**)&in);
+    check(ALLOCATING FROM GLOBAL REGION, err);
+    memset(in, 1, GLOBAL_SIZE*4);
+
+    char* out;
+    err=hsa_memory_allocate(global_region, GLOBAL_SIZE*4,(void**)&out);
+    check(ALLOCATING FROM GLOBAL REGION, err);
     memset(out, 0, GLOBAL_SIZE*4);
-    err=hsa_memory_register(out, GLOBAL_SIZE*4);
-    check(Registering argument memory for output parameter, err);
 
     struct __attribute__ ((aligned(16))) args_t {
        	uint64_t global_offset_0;
@@ -355,11 +387,13 @@ int main(int argc, char **argv) {
     err=hsa_queue_destroy(queue);
     check(Destroying the queue, err);
     
+    err=hsa_memory_free(in);
+    check(Releasing memory allocated before, err);
+    err=hsa_memory_free(out);
+    check(Releasing memory allocated before, err);
+
     err=hsa_shut_down();
     check(Shutting down the runtime, err);
-
-    free(in);
-    free(out);
 
     return 0;
 }
