@@ -4,10 +4,10 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-#  TODO: Add Python, boost, clSparse, Kokkos
+#  TODO: Add Python, boost,  Kokkos, HcBlas, HcSparse
 #  Please contact Greg if you want your HSA tool added to this list
 #
-PROGVERSION=0.1.4
+PROGVERSION=0.1.5
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -139,7 +139,7 @@ if [ "$firmwa_ver" == "" ] ; then
 fi
 
 linuxm_name="Linux Kernel Version"
-linuxm_ver=`uname -r`
+linuxm_ver=`uname -r | cut -d"-" -f1-3`
 day=`uname -v | cut -d" " -f5`
 month=`uname -v | cut -d" " -f4`
 year=`uname -v | cut -d" " -f8`
@@ -158,16 +158,27 @@ else
    amdkfd_date="  "
 fi
 
+hrt_dpkg_name=hsa-runtime
 hsartm_name="HSA Runtime"
 dpkg-query -s  hsa-runtime 2>/dev/null >/dev/null
-if [ $? == 0 ] ; then 
+rc=$?
+if [ $rc != 0 ] ; then 
+   hrt_dpkg_name=hsa-runtime-dev
+   dpkg-query -s  hsa-runtime-dev 2>/dev/null >/dev/null
+   rc=$?
+fi
+if [ $rc == 0 ] ; then 
 #  Fixme - should be using hsainfo for this
-   hsartm_ver=`dpkg-query -s  hsa-runtime | grep Version | cut -d" " -f2`
+   hsartm_ver=`dpkg-query -s  $hrt_dpkg_name | grep Version | cut -d" " -f2`
    fname="/opt/hsa/lib/libhsa-runtime64.so"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    hsartm_date="$day"
+#  Some hacks for special hsa-runtime releases. 
    if [ "$hsartm_date" == "2015-01-19" ] ; then 
       hsartm_ver="${hsartm_ver}P Provisional"
+   fi
+   if [ "$hsartm_date" == "2016-01-26" ] ; then 
+      hsartm_ver="${hsartm_ver} Boltzman"
    fi
    hsartm_loc=$fname
 else
@@ -268,7 +279,7 @@ fi
 hcc_name="MCW hcc compiler"
 fname="/opt/hcc/bin/clang++"
 if [ -f $fname ] ; then
-   hcc_ver=`/opt/hcc/bin/clang++ --version 2>&1  | grep HCC | cut -d" " -f9`
+   hcc_ver=`/opt/hcc/bin/clang++ --version 2>&1  | grep HCC | cut -d" " -f9 | cut -d"-" -f1`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    hcc_date="$day"
    hcc_loc=$fname
