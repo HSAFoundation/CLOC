@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.4
+PROGVERSION=1.0.5
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -76,7 +76,6 @@ function usage(){
    Options without values:
     -c        Compile generated source code to create .o file
     -ll       Tell cloc.sh to generate disassembled LLVM IR 
-    -g        Generate HSAIL debugger information 
     -version  Display version of snack then exit
     -v        Verbose messages
     -vv       Get additional verbose messages from cloc.sh
@@ -92,10 +91,10 @@ function usage(){
    Options with values:
     -path     <path>         $CLOC_PATH or <sdir> if CLOC_PATH not set
                              <sdir> is directory where snack.sh is found
-    -mcpu     <cpu>          Default=kaveri, Options: kaveri,carrizo,fiji
-    -lcpath   <path>         $LC_PATH for Lightning Compiler
-    -libgcn   <path>         $LIBGCN for libamdgcn
-    -opt      <LLVM opt>     Default=2, passed to cloc.sh to build HSAIL 
+    -mcpu     <cpu>          Default=`'mymcpu`, Options: kaveri,carrizo,fiji
+    -amdllvm  <path>         Default=/opt/amd/llvm or env var AMDLLVM 
+    -libgcn   <path>         Default=/opt/amd/libamdgcn or env var LIBGCN 
+    -opt      <LLVM opt>     Default=2, passed to cloc.sh to build code object
     -gccopt   <gcc opt>      Default=2, gcc optimization for snack wrapper
     -t        <tempdir>      Default=/tmp/snk_$$, Temp dir for files
     -s        <symbolname>   Default=filename 
@@ -108,8 +107,8 @@ function usage(){
     snack.sh -c my.cl           /* gcc compile to create  my.o       */
     snack.sh -t /tmp/foo my.cl  /* will automatically set -k         */
 
-   You may set environment variables CLOC_PATH, HSA_RT, LC_PATH, LIBGCN
-   instead of providing options -path, -hsart, -lcpath, -libgcn respectively
+   You may set environment variables CLOC_PATH, HSA_RT, AMDLLVM, LIBGCN
+   instead of providing options -path, -hsart, -amdllvm, -libgcn respectively
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.
@@ -189,7 +188,6 @@ while [ $# -gt 0 ] ; do
       -fort) 		FORTRAN=1;;  
       -noglobs)  	NOGLOBFUNS=1;;  
       -kstats)  	KSTATS=1;;  
-      -g) 		GEN_DEBUG=true;; 
       -ll) 		GENLL=true;; 
       -opt) 		LLVMOPT=$2; shift ;; 
       -gccopt) 		GCCOPT=$2; shift ;; 
@@ -198,12 +196,13 @@ while [ $# -gt 0 ] ; do
       -o) 		OUTFILE=$2; shift ;; 
       -t) 		TMPDIR=$2; shift ;; 
       -path)            CLOC_PATH=$2; shift ;;
-      -lcpath)          LC_PATH=$2; shift ;;
+      -amdllvm)         AMDLLVM=$2; shift ;;
       -libgcn)          LIBGCN=$2; shift ;;
       -hsart)           HSA_RT=$2; shift ;;
       -m32)		ADDRMODE=32;;
       -mcpu)            LC_MCPU=$2; shift ;;
 
+      -g) 		GEN_DEBUG=true;; 
       -hsaillib)        HSAILLIB=$2; shift ;; 
       -hsail) 		GEN_IL=true;; 
       -brig) 		GEN_BRIG=true;; 
@@ -262,9 +261,10 @@ filetype=${LASTARG##*\.}
 # The old snack with brig and hsail is now snackhsail.sh
 # The snack.sh will only be for generating code object.
 #
-if [ "$filetype" == "hsail" ] || [ $GEN_IL] || [ $GEN_BRIG ] || [ $HSAILLIB ]   ; then 
+if [ "$filetype" == "hsail" ] || [ $GEN_IL] || [ $GEN_BRIG ] || [ $HSAILLIB ] || [ $GEN_DEBUG ]  ; then 
    echo "ERROR:  The use of brig or hsail in snack.sh is deprecated. Please use"
    echo "        the snackhsail.sh command to generate and embed hsail or brig."
+   echo "        This includes the -g option to generate HSAIL debug info"
    exit $DEADRC
 fi 
 
@@ -326,8 +326,8 @@ fi
 if [ $GENLL ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -ll"
 fi
-if [ $LC_PATH ] ; then
-   OTHERCLOCFLAGS="$OTHERCLOCFLAGS -lcpath $LC_PATH"
+if [ $AMDLLVM ] ; then
+   OTHERCLOCFLAGS="$OTHERCLOCFLAGS -amdllvm $AMDLLVM"
 fi
 if [ $LIBGCN ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -libgcn $LIBGCN"
@@ -399,7 +399,7 @@ if [ $VERBOSE ] ; then
    fi
    echo "#           Headers:	   $OUTDIR/$FNAME.h"
    echo "#Info:  Run date:	$RUNDATE" 
-   echo "#Info:  LLVM path:	$CLOC_PATH"
+   echo "#Info:  CLOC path:	$CLOC_PATH"
    [ $MAKEOBJ ]  && echo "#Info:  Runtime:	$HSA_RT"
    [ $KEEPTDIR ] && echo "#Info:  Temp dir:	$TMPDIR" 
    [ $MAKEOBJ ]  && echo "#Info:  gcc loc:	$CMD_GCC" 

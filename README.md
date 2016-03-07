@@ -1,8 +1,8 @@
-CLOC - V 1.0.4 (HSA 1.0F) 
+CLOC - V 1.0.5 (HSA 1.0F) 
 =========================
 
 CLOC:  CL Offline Compiler
-       Generate HSAIL or brig from a cl (Kernel c Language) file.
+       Generate HSA code object from a cl (Kernel c Language) file.
 SNACK: Structured No API Compiled Kernels.
        Launch GPU kernels as host-callable functions with structured launch parameters.
 
@@ -83,7 +83,7 @@ Software License Agreement.
    Options with values:
     -path    <path>           $CLOC_PATH or <cdir> if CLOC_PATH not set
                               <cdir> is directory where cloc.sh is found
-    -lcpath  <path>           $LC_PATH or /opt/amd/llvm/bin  
+    -amdllvm <path>           $AMDLLVM or /opt/amd/llvm
     -libgcn  <path>           $LIBGCN or /opt/amd/libamdgcn  
     -hlcpath <path>           $HLC_PATH or /opt/amd/hlc3.2/bin  
     -mcpu    <cputype>        Default= value returned by ./mymcpu
@@ -99,9 +99,9 @@ Software License Agreement.
     cloc.sh my.cl             /* create my.hsaco                    */
 
    You may set these environment variables 
-   LLVMOPT, CLOC_PATH,HLC_PATH,LC_PATH,LIBGCN,LC_MCPU, CLOPTS, or LKOPTS 
+   LLVMOPT, CLOC_PATH,HLC_PATH,AMDLLVM,LIBGCN,LC_MCPU, CLOPTS, or LKOPTS 
    instead of providing these respective command line options 
-   -opt, -path, -hlcpath, -lcpath, -libgcn, -mcpu,  -clopts, or -lkopts 
+   -opt, -path, -hlcpath, -amdllvm, -libgcn, -mcpu,  -clopts, or -lkopts 
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.
@@ -139,9 +139,9 @@ Software License Agreement.
    Options with values:
     -path     <path>         $CLOC_PATH or <sdir> if CLOC_PATH not set
                              <sdir> is directory where snack.sh is found
-    -mcpu     <cpu>          Default=kaveri, Options: kaveri,carrizo,fiji
-    -lcpath   <path>         $LC_PATH for Lightning Compiler
-    -libgcn   <path>         $LIBGCN for libamdgcn
+    -mcpu     <cpu>          Default=`'mymcpu`, Options: kaveri,carrizo,fiji
+    -amdllvm  <path>         Default=/opt/amd/llvm or env var AMDLLVM 
+    -libgcn   <path>         Default=/opt/amd/libamdgcn or env var LIBGCN 
     -opt      <LLVM opt>     Default=2, passed to cloc.sh to build HSAIL 
     -gccopt   <gcc opt>      Default=2, gcc optimization for snack wrapper
     -t        <tempdir>      Default=/tmp/snk_$$, Temp dir for files
@@ -155,8 +155,8 @@ Software License Agreement.
     snack.sh -c my.cl           /* gcc compile to create  my.o       */
     snack.sh -t /tmp/foo my.cl  /* will automatically set -k         */
 
-   You may set environment variables CLOC_PATH, HSA_RT, LC_PATH, LIBGCN
-   instead of providing options -path, -hsart, -lcpath, -libgcn respectively
+   You may set environment variables CLOC_PATH, HSA_RT, AMDLLVM, LIBGCN
+   instead of providing options -path, -hsart, -amdllvm, -libgcn respectively
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.

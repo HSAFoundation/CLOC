@@ -26,7 +26,7 @@
 #  It does call the new cloc.sh but with the -brig flag
 #  The maintainence of this version is stopping.
 #
-PROGVERSION=0.9.8
+PROGVERSION=0.9.9
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 

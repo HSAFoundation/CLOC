@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.4
+PROGVERSION=1.0.5
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -71,7 +71,7 @@ function usage(){
    Options with values:
     -path    <path>           $CLOC_PATH or <cdir> if CLOC_PATH not set
                               <cdir> is directory where cloc.sh is found
-    -lcpath  <path>           $LC_PATH or /opt/amd/llvm/bin  
+    -amdllvm <path>           $AMDLLVM or /opt/amd/llvm
     -libgcn  <path>           $LIBGCN or /opt/amd/libamdgcn  
     -hlcpath <path>           $HLC_PATH or /opt/amd/hlc3.2/bin  
     -mcpu    <cputype>        Default= value returned by ./mymcpu
@@ -87,9 +87,9 @@ function usage(){
     cloc.sh my.cl             /* create my.hsaco                    */
 
    You may set these environment variables 
-   LLVMOPT, CLOC_PATH,HLC_PATH,LC_PATH,LIBGCN,LC_MCPU, CLOPTS, or LKOPTS 
+   LLVMOPT, CLOC_PATH,HLC_PATH,AMDLLVM,LIBGCN,LC_MCPU, CLOPTS, or LKOPTS 
    instead of providing these respective command line options 
-   -opt, -path, -hlcpath, -lcpath, -libgcn, -mcpu,  -clopts, or -lkopts 
+   -opt, -path, -hlcpath, -amdllvm, -libgcn, -mcpu,  -clopts, or -lkopts 
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.
@@ -180,7 +180,7 @@ while [ $# -gt 0 ] ; do
       -hsaillib) 	HSAILLIB=$2; shift ;; 
       -mcpu)            LC_MCPU=$2; shift ;;
       -path)            CLOC_PATH=$2; shift ;;
-      -lcpath)          LC_PATH =$2; shift ;;
+      -amdllvm)         AMDLLVM=$2; shift ;;
       -libgcn)          LIBGCN=$2; shift ;;
       -hlcpath)         HLC_PATH =$2; shift ;;
       -h) 	        usage ;; 
@@ -222,7 +222,7 @@ cdir=$(getdname $0)
 CLOC_PATH=${CLOC_PATH:-$cdir}
 
 # These are default locations of the lightning compiler, libamdgcn, and HLC
-LC_PATH=${LC_PATH:-/opt/amd/llvm/bin}
+AMDLLVM=${AMDLLVM:-/opt/amd/llvm}
 LIBGCN=${LIBGCN:-/opt/amd/libamdgcn}
 HLC_PATH=${HLC_PATH:-/opt/amd/hlc3.2/bin}
 
@@ -332,7 +332,7 @@ if [ $VERBOSE ] ; then
       echo "#Info:  Code object:	$OUTDIR/$OUTFILE"
    fi
    echo "#Info:  CLOC path:	$CLOC_PATH"
-   echo "#Info:  LLVM path:	$LC_PATH"
+   echo "#Info:  AMDLLVM:	$AMDLLVM"
    [ $KEEPTDIR ] &&  echo "#Info:  Temp dir:	$TMPDIR" 
    echo "#   "
 fi 
@@ -351,26 +351,26 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
    # bad clang for doing quickpath
    #if [ $quickpath ] ; then 
    #   [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> hsaco ..."
-   #   runcmd "$LC_PATH/$CMD_CLC $QPOPTS -o $OUTDIR/$FNAME.hsaco $INDIR/$CLNAME"
+   #   runcmd "$AMDLLVM/bin/$CMD_CLC $QPOPTS -o $OUTDIR/$FNAME.hsaco $INDIR/$CLNAME"
    #else 
 
    [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> bc ..."
-   runcmd "$LC_PATH/$CMD_CLC -c -emit-llvm -o $TMPDIR/$FNAME.bc $INDIR/$CLNAME"
+   runcmd "$AMDLLVM/bin/$CMD_CLC -c -emit-llvm -o $TMPDIR/$FNAME.bc $INDIR/$CLNAME"
 
    if [ $GENLL ] ; then
       [ $VERBOSE ] && echo "#Step:  Disassemble	bc --> ll ..."
-      runcmd "$LC_PATH/$CMD_LLA -o $TMPDIR/$FNAME.ll $TMPDIR/$FNAME.bc"
+      runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.ll $TMPDIR/$FNAME.bc"
       if [ ! $KEEPTDIR ] ; then 
          runcmd "cp $TMPDIR/$FNAME.ll $OUTDIR/$FNAME.ll"
       fi
    fi
 
    [ $VERBOSE ] && echo "#Step:  Link(llvm-link)	bc --> lnkd.bc ..."
-   runcmd "$LC_PATH/$CMD_LLL $TMPDIR/$FNAME.bc $LIBGCN/lib/libamdgcn.$LC_MCPU.bc -o $TMPDIR/$FNAME.lnkd.bc" 
+   runcmd "$AMDLLVM/bin/$CMD_LLL $TMPDIR/$FNAME.bc $LIBGCN/lib/libamdgcn.$LC_MCPU.bc -o $TMPDIR/$FNAME.lnkd.bc" 
 
    if [ $GENLL ] ; then
       [ $VERBOSE ] && echo "#Step:  Disassemble	lnkd.bc --> lnkd.ll ..."
-      runcmd "$LC_PATH/$CMD_LLA -o $TMPDIR/$FNAME.lnkd.ll $TMPDIR/$FNAME.lnkd.bc"
+      runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.lnkd.ll $TMPDIR/$FNAME.lnkd.bc"
       if [ ! $KEEPTDIR ] ; then 
          runcmd "cp $TMPDIR/$FNAME.lnkd.ll $OUTDIR/$FNAME.lnkd.ll"
       fi
@@ -378,11 +378,11 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
 
    if [ $LLVMOPT != 0 ] ; then 
       [ $VERBOSE ] && echo "#Step:  Optimize(opt)	lnkd.bc --> opt.bc -O$LLVMOPT ..."
-      runcmd "$LC_PATH/$CMD_OPT -o $TMPDIR/$FNAME.opt.bc $TMPDIR/$FNAME.lnkd.bc"
+      runcmd "$AMDLLVM/bin/$CMD_OPT -o $TMPDIR/$FNAME.opt.bc $TMPDIR/$FNAME.lnkd.bc"
 
       if [ $GENLL ] ; then
          [ $VERBOSE ] && echo "#Step:  Disassemble	opt.bc --> opt.ll ..."
-         runcmd "$LC_PATH/$CMD_LLA -o $TMPDIR/$FNAME.opt.ll $TMPDIR/$FNAME.opt.bc"
+         runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.opt.ll $TMPDIR/$FNAME.opt.bc"
          if [ ! $KEEPTDIR ] ; then 
             runcmd "cp $TMPDIR/$FNAME.opt.ll $OUTDIR/$FNAME.opt.ll"
          fi 
@@ -394,10 +394,10 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
    fi 
 
    [ $VERBOSE ] && echo "#Step:  llc mcpu=$LC_MCPU	$LLC_BC.bc --> gcn ..."
-   runcmd "$LC_PATH/$CMD_LLC -o $TMPDIR/$FNAME.gcn $TMPDIR/$FNAME.$LLC_BC.bc"
+   runcmd "$AMDLLVM/bin/$CMD_LLC -o $TMPDIR/$FNAME.gcn $TMPDIR/$FNAME.$LLC_BC.bc"
  
    [ $VERBOSE ] && echo "#Step:  amdphdrs 	gcn --> hsaco ..."
-   runcmd "$LC_PATH/$CMD_HDR $TMPDIR/$FNAME.gcn $OUTDIR/$OUTFILE "
+   runcmd "$AMDLLVM/bin/$CMD_HDR $TMPDIR/$FNAME.gcn $OUTDIR/$OUTFILE "
 
    #fi # end of if quickpath then ... else  ...
 
