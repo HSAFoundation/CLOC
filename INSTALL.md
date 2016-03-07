@@ -1,11 +1,9 @@
 Cloc Install Instructions
 ===============================
 
-Warning.  These instructions are for HSA 1.0.3 (September 2015 Update) .
+Warning.  These instructions are for CLOC 1.0 (March 2016 Update) .
 
-The Cloc utility consists of three bash scripts with file names "cloc.sh" ,  "snack.sh" , and "snk_genw.sh" . These are found in the bin directory of this repository. Copy these files to /opt/amd/cloc/bin.  To update to a new version of Cloc simply replace cloc.sh snack.sh,  and snk_genw.sh in directory /opt/amd/cloc/bin.
-
-In addition to the bash scripts, Cloc requires the HSA runtime and the HLC compiler. This set of instructions can be used to install a comprehensive HSA software stack and the Cloc utility for Ubuntu.  In addition to Linux, you must have an HSA compatible system such as a Kaveri processor. There are four major steps to this process:
+This set of instructions can be used to install a comprehensive HSA software stack and the Cloc utility for Ubuntu.  In addition to Linux, you must have an HSA compatible system such as a Kaveri processor. There are four major steps to this process:
 
 - [1. Prepare for Upgrade](#Prepare)
 - [2. Install Linux Kernel](#Boot)
@@ -53,14 +51,14 @@ mount the appropriate MLNX_OFED iso
 
 ## Install HSA Linux Kernel Drivers 
 
-These instructions are for HSA1.0F.
+These instructions are for Boltzman release of HSA 1.0.
 
 Execute these commands:
 
 ```
 cd ~/git
-git clone https://github.com/HSAfoundation/HSA-Drivers-Linux-AMD.git
-sudo dpkg -i HSA-Drivers-Linux-AMD/kfd-1.6/ubuntu/*.deb
+git clone https://github.com/RadeonOpenCompute/ROCK-Kernel-Driver
+sudo dpkg -i ROCK-Kernel-Driver/packages/ubuntu/*.deb
 ```
 
 ## Reboot System
@@ -69,12 +67,35 @@ sudo dpkg -i HSA-Drivers-Linux-AMD/kfd-1.6/ubuntu/*.deb
 sudo reboot
 ```
 
-## Test HSA is Active.
+<A Name="Install">
+3. Install HSA Software
+=======================
 
-Use "kfd_check_installation.sh" in HSA Linux driver to verify installation.
+## Install HSA 1.0F Runtime
+
+```
+mkdir ~/git
+cd ~/git
+git clone https://github.com/RadeonOpenCompute/ROCR-Runtime.git
+cd ROCR-Runtime/packages/ubuntu
+sudo dpkg -i hsa-runtime-dev*.deb
+```
+
+## Install CLOC 1.0
+
+```
+cd ~/git
+git clone -b 1.0 https://github.com/HSAFoundation/cloc
+cd cloc/packages/ubuntu
+sudo dpkg -i *.deb
+```
+
+## Test if HSA is Active.
+
+Use "kfd_check_installation.sh" in cloc/bin to verify installation.
 
 ``` 
-cd ~/git/HSA-Drivers-Linux-AMD
+cd ~/git/cloc/bin
 ./kfd_check_installation.sh
 ``` 
 
@@ -95,63 +116,34 @@ Can run HSA.................................YES
 If it does not detect a valid GPU ID (last two entries are NO), it is possible that you need to turn the IOMMU on in the firmware.  Reboot your system and interrupt the boot process to get the firmware screen. Then find the menu to turn on IOMMU and switch from disabled to enabled.  Then select "save and exit" to boot your system.  Then rerun the test script.
 
 
-<A Name="Install">
-3. Install HSA Software
-=======================
-
-## Install HSA 1.0F Runtime
+## Set LD_LIBRARY_PATH
 
 ```
-mkdir ~/git
-cd ~/git
-git clone https://github.com/HSAfoundation/HSA-Runtime-AMD.git
-cd HSA-Runtime-AMD/ubuntu
-sudo dpkg -i hsa-runtime_1.0.3_amd64.deb
+export LD_LIBRARY_PATH=/opt/hsa/lib
 ```
 
-## Install and Test Cloc utility
-
-As of Cloc version 0.9 the cl frontend clc2 and supporting LLVM 3.6 executables are stored in the same directory as the cloc.sh, snack.sh and snk_genw.sh shell scripts.  These scripts need to be copied should be copied into /opt/amd/cloc/bin
-```
-cd ~/git
-git clone -b master https://github.com/HSAfoundation/cloc
-# Install
-mkdir -p /opt/amd/cloc
-# Copy everything till we get deb and rpm for cloc
-sudo cp -rp ~/git/cloc /opt/amd
-sudo ln -sf /opt/amd/cloc/bin/cloc.sh /usr/local/bin/cloc.sh
-sudo ln -sf /opt/amd/cloc/bin/snack.sh /usr/local/bin/snack.sh
-sudo ln -sf /opt/amd/cloc/bin/printhsail /usr/local/bin/printhsail
-# Test
-cp -r /opt/amd/cloc/examples ~
-cd ~/examples/snack/helloworld
-./buildrun.sh
-cd ~/examples/hsa/vector_copy
-make
-make test
-```
-
-## Set HSA environment variables
-
-As of Cloc version 0.9, HSA_LLVM_PATH is no longer required because cloc.sh and snack.sh expect the binaries to be in the same directory where cloc.sh and snack.sh are stored.  For testing other compilers or versions of the HSA LLVM binaries, you may set HSA_LLVM_PATH or use the -p option as noted in the help. The snack.sh script assumes HSA_RUNTIME_PATH is /opt/hsa.  However, we recommend using LD_LIBRARY_PATH to find the current version of he HSA runtime as follows:
-```
-export HSA_RUNTIME_PATH=/opt/hsa
-export LD_LIBRARY_PATH=$HSA_RUNTIME_PATH/lib
-```
+## Test snack and cloc examples
 
 We recommend that cloc.sh, snack,sh, and printhsail be available in your path.  You can symbolically link them or add to PATH as follows:
 ```
 #
-# Either put /opt/amd/cloc/bin in your PATH as follows
+# Either put /opt/amd/cloc/bin in your PATH 
 export PATH=$PATH:/opt/amd/cloc/bin
 #
 # OR symbolic link cloc.sh and snack.sh to system path
 sudo ln -sf /opt/amd/cloc/bin/cloc.sh /usr/local/bin/cloc.sh
 sudo ln -sf /opt/amd/cloc/bin/snack.sh /usr/local/bin/snack.sh
+sudo ln -sf /opt/amd/cloc/bin/snackhsail.sh /usr/local/bin/snackhsail.sh
 sudo ln -sf /opt/amd/cloc/bin/printhsail /usr/local/bin/printhsail
 ```
-
-Future package installers (.deb and .rpm) will symbolically link them.
+Now you can test the snack and cloc eamples
+```
+cd ~/git/cloc/examples/snack/helloworld
+./buildrun.sh
+cd ~/git/cloc/examples/hsa/vector_copy_codeobject
+make
+make test
+```
 
 ## Install HCC Compiler from Multicoreware  (OPTIONAL)
 
@@ -166,7 +158,7 @@ sudo dpkg -i hcc-0.8.1545-15f927e-ee0f474-183de0b-Linux.deb
 
 ```
 cd $HOME/git
-git clone -b master https://github.com/HSAfoundation/hsa-openmp-gcc-amd
+git clone -b master https://github.com/HSAFoundation/hsa-openmp-gcc-amd
 sudo rsync -av --exclude .git $HOME/git/hsa-openmp-gcc-amd/usr/local/hsagccver  /usr/local
 sudo rm -f /usr/local/hsagcc
 sudo rsync -av $HOME/git/hsa-openmp-gcc-amd/usr/local/hsagcc  /usr/local
