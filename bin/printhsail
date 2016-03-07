@@ -104,6 +104,7 @@ while [ $# -gt 0 ] ; do
    case "$1" in 
       -brig) 		GEN_BRIG=true;; 
       -decode) 		GEN_DECODE=true;; 
+      -hlcpath) 	HLC_PATH=$2;shift;;
       -h) 		usage ;; 
       -help) 		usage ;; 
       --help) 		usage ;; 
@@ -130,6 +131,8 @@ if [ ! -z $1 ]; then
    echo " " >&2
 fi
 
+HLC_PATH=${HLC_PATH:-/opt/amd/hlc3.2/bin}
+
 infile=$LASTARG
 tmpfile=/tmp/printhsail$$
 cloc_brigsym="HSA_BrigMem"
@@ -146,9 +149,7 @@ fi
 
 HSAIL_DISASSEMBLE=`which HSAILasm`
 if [ $? != 0 ] ; then 
-   cdir=$(getdname $0)
-   [ ! -L "$cdir/cloc.sh" ] || cdir=$(getdname `readlink "$cdir/cloc.sh"`)
-   HSAIL_DISASSEMBLE=${cdir}/HSAILasm
+   HSAIL_DISASSEMBLE=$HLC_PATH/HSAILasm
 fi 
 
 if [ ! -f "$infile" ] ; then 

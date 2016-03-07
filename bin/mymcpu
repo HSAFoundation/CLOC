@@ -1,0 +1,35 @@
+#!/bin/bash
+#
+# mymcpu:  Print the mcpu value for the current machine
+#
+# cloc.sh needs a default mcpu.  
+# This is a hack to identify the mcpu as a better default than picking one
+# It only prints kaveri, carrizo, or fiji
+#
+CPULABEL=`cat /proc/cpuinfo | grep -m1 "model name" | cut -d: -f2 | cut -d, -f1`
+VENDOR=`echo $CPULABEL | cut -d" " -f1`
+CPU=`echo $CPULABEL | cut -d" " -f2`
+if [ $VENDOR != "AMD" ] ; then 
+   echo fiji
+   exit 0
+fi
+
+if [ "$CPU" == "A10-7850K" ] || \
+   [ "$CPU" == "A10-7870K" ] || \
+   [ "$CPU" == "A10-7700K" ] || \
+   [ "$CPU" == "A10-7800K" ] ; then 
+   echo kaveri 
+   exit 0
+fi
+
+if [ "$CPU" == "FX-8800P" ] || \
+   [ "$CPU" == "A12-8800B" ] || \
+   [ "$CPU" == "A12-8700B" ] || \
+   [ "$CPU" == "A10-8700P" ] || \
+   [ "$CPU" == "Eng" ] ; then 
+   echo carrizo
+   exit 0
+fi
+
+echo fiji
+exit 0

@@ -7,9 +7,9 @@
 #  TODO: Add Python, boost,  Kokkos, HcBlas, HcSparse
 #  Please contact Greg if you want your HSA tool added to this list
 #
-PROGVERSION=0.1.5
+PROGVERSION=0.1.6
 #
-# Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  
+# Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
 # AMD is granting you permission to use this software and documentation (if any) (collectively, the 
 # Materials) pursuant to the terms and conditions of the Software License Agreement included with the 
@@ -63,7 +63,7 @@ function usage(){
     -a            List all known tools
     --no-headers  Do not print header info
 
-   Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.
+   Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.
 
 EOF
    exit 1 
@@ -204,6 +204,18 @@ else
   opencl_ver="MISSING"
   opencl_date="  "
 fi
+fi
+
+llvmlc_name="Lightning Compiler"
+fname="/opt/amd/lc/bin/llc"
+if [ -f $fname ] ; then
+   llvmlc_ver=`$fname --version | grep version | cut -d" " -f5`
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   llvmlc_date="$day "
+   llvmlc_loc=$fname
+else
+   llvmlc_ver="MISSING"
+   llvmlc_date="  "
 fi
 
 llvmbe_name="LLVM HSAIL HLC"
@@ -472,7 +484,8 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$codepl_name" "$codepl_ver" "$codepl_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$pathsc_name" "$pathsc_ver" "$pathsc_date" "compiler" 
 [ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencl_name" "$opencl_ver" "$opencl_date" "compiler" 
-printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "utility" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmlc_name" "$llvmlc_ver" "$llvmlc_date" "compiler" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "compiler" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsaila_name" "$hsaila_ver" "$hsaila_date" "utility" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$profil_name" "$profil_ver" "$profil_date" "tool" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$codexl_name" "$codexl_ver" "$codexl_date" "tool" 

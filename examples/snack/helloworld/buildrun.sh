@@ -1,38 +1,5 @@
 #!/bin/bash
 
-#  Call buildrun.sh as follows
-
-#  ./buildrun 
-#  ./buildrun cpp
-#  ./buildrun f
-#
-function getdname(){
-   local __DIRN=`dirname "$1"`
-   if [ "$__DIRN" = "." ] ; then 
-      __DIRN=$PWD; 
-   else
-      if [ ${__DIRN:0:1} != "/" ] ; then 
-         if [ ${__DIRN:0:2} == ".." ] ; then 
-               __DIRN=`dirname $PWD`/${__DIRN:3}
-         else
-            if [ ${__DIRN:0:1} = "." ] ; then 
-               __DIRN=$PWD/${__DIRN:2}
-            else
-               __DIRN=$PWD/$__DIRN
-            fi
-         fi
-      fi
-   fi
-   echo $__DIRN
-}
-
-example_dir=$(getdname $0)
-
-#  Compile the acclerated functions with snack.sh to create hw.o
-echo 
-echo "cd $example_dir"
-cd $example_dir
-
 export LD_LIBRARY_PATH=/opt/hsa/lib
 
 #  Compile the acclerated functions with snack.sh to create hw.o

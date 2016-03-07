@@ -1,13 +1,16 @@
 #!/bin/bash
 #
-#  cloc.sh:  Convert cl file to brig, hsail, or .o  file
-#            using the LLVM to HSAIL backend compiler.
+#  cloc.sh: Compile cl file into an HSA Code object file (.hsaco)  
+#           using the LLVM Ligntning Compiler. An hsaco file contains 
+#           the amdgpu isa that can be loaded by the HSA Runtime.
+#
+#  Old options -hsail and -brig use HLC that will be deprecated
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=0.9.8
+PROGVERSION=1.0.4
 #
-# Copyright (c) 2014 ADVANCED MICRO DEVICES, INC.  
+# Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
 # AMD is granting you permission to use this software and documentation (if any) (collectively, the 
 # Materials) pursuant to the terms and conditions of the Software License Agreement included with the 
@@ -48,43 +51,48 @@ PROGVERSION=0.9.8
 function usage(){
 /bin/cat 2>&1 <<"EOF" 
 
-   cloc.sh: Convert a cl file to brig or hsail using the
-            LLVM to HSAIL backend compiler.
+   cloc.sh: Compile a cl file into an HSA Code object file (.hsaco)  
+            using the LLVM Ligntning Compiler. An hsaco file contains 
+            the amdgpu isa that can be loaded by the HSA Runtime.
 
    Usage: cloc.sh [ options ] filename.cl
 
    Options without values:
+    -ll       Generate dissassembled LLVM IR, for info only
     -g        Generate debug information
-    -hsail    Generate dissassembled hsail from brig 
-    -ll       Generate dissassembled ll from bc, for info only
     -version  Display version of cloc then exit
     -v        Verbose messages
     -n        Dryrun, do nothing, show commands that would execute
     -h        Print this help message
     -k        Keep temporary files
+    -brig     Generate brig  (soon to be depracated)
+    -hsail    Generate dissassembled hsail (soon to be deprecated)
 
    Options with values:
-    -t       <tdir>           Default=/tmp/cloc$$, Temp dir for files
-    -o       <outfilename>    Default=<filename>.<ft> ft=brig or hsail
-    -opt     <LLVM opt>       Default=2, LLVM optimization level
-    -p       <path>           $HSA_LLVM_PATH or <cdir> if HSA_LLVM_PATH not set
-                              <cdir> is actual directory of cloc.sh 
-    -clopts  <compiler opts>  Default="-cl-std=CL2.0"
+    -path    <path>           $CLOC_PATH or <cdir> if CLOC_PATH not set
+                              <cdir> is directory where cloc.sh is found
+    -lcpath  <path>           $LC_PATH or /opt/amd/llvm/bin  
+    -libgcn  <path>           $LIBGCN or /opt/amd/libamdgcn  
+    -hlcpath <path>           $HLC_PATH or /opt/amd/hlc3.2/bin  
+    -mcpu    <cputype>        Default= value returned by ./mymcpu
+    -clopts  <compiler opts>  Default=" "
     -I       <include dir>    Provide one directory per -I option
-    -lkopts  <LLVM link opts> Default="-prelink-opt   \
-              -l <cdir>/builtins-hsail.bc -l <cdir>/builtins-gcn.bc   \
-              -l <cdir>/builtins-hsail-amd-ci.bc"
-    -hsaillib <fname>         Filename of hsail library.
+    -lkopts  <LLVM link opts> Default=$LIBGCN/lib/libamdgcn.$mcpu.bc
+    -hsaillib <fname>         Filename of hsail library.(soon to be deprecated)
+    -opt     <LLVM opt>       LLVM optimization level
+    -o       <outfilename>    Default=<filename>.<ft> ft=brig or hsail
+    -t       <tdir>           Default=/tmp/cloc-tmp-$$, Temp dir for files
 
    Examples:
-    cloc.sh my.cl               /* create my.brig                   */
-    cloc.sh  -hsail my.cl       /* create my.hsail and my.brig      */
+    cloc.sh my.cl             /* create my.hsaco                    */
 
-   You may set environment variables LLVMOPT, HSA_LLVM_PATH, CLOPTS, 
-   or LKOPTS instead of providing options -opt -p, -clopts, or -lkopts .
+   You may set these environment variables 
+   LLVMOPT, CLOC_PATH,HLC_PATH,LC_PATH,LIBGCN,LC_MCPU, CLOPTS, or LKOPTS 
+   instead of providing these respective command line options 
+   -opt, -path, -hlcpath, -lcpath, -libgcn, -mcpu,  -clopts, or -lkopts 
    Command line options will take precedence over environment variables. 
 
-   Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.
+   Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.
 
 EOF
    exit 1 
@@ -94,15 +102,42 @@ DEADRC=12
 
 #  Utility Functions
 function do_err(){
-   if [ ! $KEEPTDIR ] ; then 
+   if [ $NEWTMPDIR ] ; then 
+      if [ $KEEPTDIR ] ; then 
+         cp -rp $TMPDIR $OUTDIR
+         [ $VERBOSE ] && echo "#Info:  Temp files copied to $OUTDIR/$TMPNAME"
+      fi
       rm -rf $TMPDIR
+   else 
+      if [ $KEEPTDIR ] ; then 
+         [ $VERBOSE ] && echo "#Info:  Temp files kept in $TMPDIR"
+      fi 
    fi
+   [ $VERBOSE ] && echo "#Info:  Done"
    exit $1
 }
+
 function version(){
    echo $PROGVERSION
    exit 0
 }
+
+function runcmd(){
+   THISCMD=$1
+   if [ $DRYRUN ] ; then
+      echo "$THISCMD"
+   else 
+      [ $VV ] && echo "$THISCMD"
+      $THISCMD
+      rc=$?
+      if [ $rc != 0 ] ; then 
+         echo "ERROR:  The following command failed with return code $rc."
+         echo "        $THISCMD"
+         do_err $rc
+      fi
+   fi
+}
+
 function getdname(){
    local __DIRN=`dirname "$1"`
    if [ "$__DIRN" = "." ] ; then 
@@ -131,11 +166,11 @@ while [ $# -gt 0 ] ; do
       -q)               QUIET=true;;
       --quiet)          QUIET=true;;
       -k) 		KEEPTDIR=true;; 
-      --keep) 		KEEPTDIR=true;; 
       -n) 		DRYRUN=true;; 
       -hsail) 		GEN_IL=true;; 
+      -brig) 		GEN_BRIG=true;; 
       -g) 		GEN_DEBUG=true;; 
-      -ll) 		GENLL=true;KEEPTDIR=true;; 
+      -ll) 		GENLL=true;;
       -clopts) 		CLOPTS=$2; shift ;; 
       -I) 		INCLUDES="$INCLUDES -I $2"; shift ;; 
       -opt) 		LLVMOPT=$2; shift ;; 
@@ -143,16 +178,19 @@ while [ $# -gt 0 ] ; do
       -o) 		OUTFILE=$2; shift ;; 
       -t) 		TMPDIR=$2; shift ;; 
       -hsaillib) 	HSAILLIB=$2; shift ;; 
-      -p)               HSA_LLVM_PATH=$2; shift ;;
-      -h) 		usage ;; 
-      -help) 		usage ;; 
-      --help) 		usage ;; 
+      -mcpu)            LC_MCPU=$2; shift ;;
+      -path)            CLOC_PATH=$2; shift ;;
+      -lcpath)          LC_PATH =$2; shift ;;
+      -libgcn)          LIBGCN=$2; shift ;;
+      -hlcpath)         HLC_PATH =$2; shift ;;
+      -h) 	        usage ;; 
+      -help) 	        usage ;; 
+      --help) 	        usage ;; 
       -version) 	version ;; 
       --version) 	version ;; 
       -v) 		VERBOSE=true;; 
-      --version) 	version ;; 
+      -vv) 		VV=true;; 
       --) 		shift ; break;;
-      -*) 		usage ;;
       *) 		break;echo $1 ignored;
    esac
    shift
@@ -176,27 +214,39 @@ if [ ! -z $1 ]; then
    echo " "
 fi
 
-# All binaries and builtins are expected to be in the same directory as cloc.sh
-# unless HSA_LLVM_PATH is set. 
+# All binaries are expected to be in the same directory as cloc.sh
+# unless CLOC_PATH is set, otherwise set CLOC_PATH to where cloc.sh is. 
 cdir=$(getdname $0)
 [ ! -L "$cdir/cloc.sh" ] || cdir=$(getdname `readlink "$cdir/cloc.sh"`)
-# If HSA_LLVM_PATH is set use it, else use cdir
-HSA_LLVM_PATH=${HSA_LLVM_PATH:-$cdir}
+# If CLOC_PATH is set use it, else use cdir
+CLOC_PATH=${CLOC_PATH:-$cdir}
 
-#  Set Default values,  all CMD_ are started from $HSA_LLVM_PATH
-LLVMOPT=${LLVMOPT:-2} 
-#  no default CLOPTS -cl-std=CL2.0 is a forced option to the clc2 command
-CMD_CLC=${CMD_CLC:-clc2 -cl-std=CL2.0 $CLOPTS $INCLUDES}
-CMD_LLA=${CMD_LLA:-llvm-dis}
-LKOPTS=${LKOPTS:--prelink-opt -l $HSA_LLVM_PATH/builtins-hsail.bc -l $HSA_LLVM_PATH/builtins-gcn.bc  -l $HSA_LLVM_PATH/builtins-hsail-amd-ci.bc}
-CMD_LLL=${CMD_LLL:-llvm-link $LKOPTS}
-CMD_OPT=${CMD_OPT:-opt -O$LLVMOPT -gpu -whole}
-CMD_LLC=${CMD_LLC:-llc -O$LLVMOPT -march=hsail-64 -filetype=asm}
-CMD_BRI=${CMD_BRI:-HSAILasm}
-CMD_ASM=${CMD_ASM:-HSAILasm -disassemble}
-if [ $GEN_DEBUG ]  ; then 
-   export LIBHSAIL_OPTIONS_APPEND="-g -include-source"
+# These are default locations of the lightning compiler, libamdgcn, and HLC
+LC_PATH=${LC_PATH:-/opt/amd/llvm/bin}
+LIBGCN=${LIBGCN:-/opt/amd/libamdgcn}
+HLC_PATH=${HLC_PATH:-/opt/amd/hlc3.2/bin}
+
+if [ ! $LC_MCPU ] ; then 
+   LC_MCPU=`$CLOC_PATH/mymcpu`
 fi
+
+LLVMOPT=${LLVMOPT:-3}
+
+if [ $VV ]  ; then 
+   CLOPTS="-v $CLOPTS"
+   VERBOSE=true
+fi
+
+QPOPTS="-Xclang -mlink-bitcode-file -Xclang $LIBGCN/lib/libamdgcn.$LC_MCPU.bc"
+INCLUDES="-I ${LIBGCN}/include ${INCLUDES}" 
+
+#  Define the subcomands
+CMD_CLC=${CMD_CLC:-clang $CLOPTS -std=CL2.0 $CLOPTS $INCLUDES -include clc/clc.h -Dcl_clang_storage_class_specifiers -Dcl_khr_fp64 -target amdgcn--amdhsa -mcpu=$LC_MCPU} 
+CMD_LLA=${CMD_LLA:-llvm-dis}
+CMD_LLL=${CMD_LLL:-llvm-link}
+CMD_OPT=${CMD_OPT:-opt -O$LLVMOPT -mcpu=$LC_MCPU -amdgpu-annotate-kernel-features}
+CMD_LLC=${CMD_LLC:-llc -mtriple amdgcn--amdhsa -mcpu=$LC_MCPU -filetype=obj}
+CMD_HDR=${CMD_HDR:-amdphdrs}
 
 RUNDATE=`date`
 
@@ -228,7 +278,11 @@ if [ -z $OUTFILE ] ; then
 #  Output file not specified so use input directory
    OUTDIR=$INDIR
 #  Make up the output file name based on last step 
-   OUTFILE=${FNAME}.brig
+   if [ $GEN_BRIG ] || [ $GEN_IL ] ; then
+      OUTFILE=${FNAME}.brig
+   else
+      OUTFILE=${FNAME}.hsaco
+   fi
 else 
 #  Use the specified OUTFILE
    OUTDIR=$(getdname $OUTFILE)
@@ -238,7 +292,8 @@ else
    fi
 fi 
 
-TMPDIR=${TMPDIR:-/tmp/cloc$$}
+TMPNAME="cloc-tmp-$$"
+TMPDIR=${TMPDIR:-/tmp/$TMPNAME}
 if [ -d $TMPDIR ] ; then 
    KEEPTDIR=true
 else 
@@ -246,8 +301,10 @@ else
       echo "mkdir -p $TMPDIR"
    else
       mkdir -p $TMPDIR
+      NEWTMPDIR=true
    fi
 fi
+
 # Be sure not to delete the output directory
 if [ $TMPDIR == $OUTDIR ] ; then 
    KEEPTDIR=true
@@ -256,99 +313,124 @@ if [ ! -d $TMPDIR ] && [ ! $DRYRUN ] ; then
    echo "ERROR:  Directory $TMPDIR does not exist or could not be created"
    exit $DEADRC
 fi 
-if [ ! -e $HSA_LLVM_PATH/HSAILasm ] ; then 
-   echo "ERROR:  Missing binary HSAILasm in $HSA_LLVM_PATH"
-   exit $DEADRC
-fi 
 if [ ! -d $OUTDIR ] && [ ! $DRYRUN ]  ; then 
    echo "ERROR:  The output directory $OUTDIR does not exist"
    exit $DEADRC
 fi 
 
-if [ $GEN_IL ]  ; then 
-   HSAILDIR=$OUTDIR
-   HSAILNAME=$FNAME.hsail
+#  Print Header block
+if [ $VERBOSE ] ; then 
+   echo "#   "
+   echo "#Info:  CLOC Version:	$PROGVERSION" 
+   echo "#Info:  Run date:	$RUNDATE" 
+   echo "#Info:  Input file:	$INDIR/$CLNAME"
+   if [ $GEN_BRIG ] || [ $GEN_IL ]  ; then
+      echo "#Info:  Brig file:	$OUTDIR/$OUTFILE"
+      [ $GEN_IL ] && echo "#Info:  HSAIL file:	$OUTDIR/$FNAME.hsail"
+      echo "#Info:  HLC path:	$HLC_PATH"
+   else
+      echo "#Info:  Code object:	$OUTDIR/$OUTFILE"
+   fi
+   echo "#Info:  CLOC path:	$CLOC_PATH"
+   echo "#Info:  LLVM path:	$LC_PATH"
+   [ $KEEPTDIR ] &&  echo "#Info:  Temp dir:	$TMPDIR" 
+   echo "#   "
 fi 
 
-[ $VERBOSE ] && echo "#Info:  Version:	cloc.sh $PROGVERSION" 
-[ $VERBOSE ] && echo "#Info:  Input file:	$INDIR/$CLNAME"
-[ $VERBOSE ] && echo "#Info:  Brig file:	$OUTDIR/$OUTFILE"
-if [ $GEN_IL ] ; then 
-   [ $VERBOSE ] && echo "#Info:  HSAIL file:	$HSAILDIR/$HSAILNAME"
-fi
-[ $VERBOSE ] && echo "#Info:  Run date:	$RUNDATE" 
-[ $VERBOSE ] && echo "#Info:  LLVM path:	$HSA_LLVM_PATH"
-[ $KEEPTDIR ] && [ $VERBOSE ] && echo "#Info:  Temp dir:	$TMPDIR" 
 rc=0
 
-[ $VERBOSE ] && echo "#Step:  Compile(clc2)	cl --> bc ..."
-if [ $DRYRUN ] ; then
-   echo $CMD_CLC -o $TMPDIR/$FNAME.bc $INDIR/$CLNAME
-else
-   $HSA_LLVM_PATH/$CMD_CLC -o $TMPDIR/$FNAME.bc $INDIR/$CLNAME
-   rc=$?
-   if [ $rc != 0 ] ; then 
-      echo "ERROR:  The following command failed with return code $rc."
-      echo "        $CMD_CLC -o $TMPDIR/$FNAME.bc $INDIR/$CLNAME"
-      do_err $rc
+#if [ ! $GENLL ] ; then 
+#   quickpath=true
+#fi
+
+if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then 
+
+   # No HSAIL or Brig.  This is the new code path
+   # Use the Lightning Compiler to generate HSA code object
+
+   # bad clang for doing quickpath
+   #if [ $quickpath ] ; then 
+   #   [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> hsaco ..."
+   #   runcmd "$LC_PATH/$CMD_CLC $QPOPTS -o $OUTDIR/$FNAME.hsaco $INDIR/$CLNAME"
+   #else 
+
+   [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> bc ..."
+   runcmd "$LC_PATH/$CMD_CLC -c -emit-llvm -o $TMPDIR/$FNAME.bc $INDIR/$CLNAME"
+
+   if [ $GENLL ] ; then
+      [ $VERBOSE ] && echo "#Step:  Disassemble	bc --> ll ..."
+      runcmd "$LC_PATH/$CMD_LLA -o $TMPDIR/$FNAME.ll $TMPDIR/$FNAME.bc"
+      if [ ! $KEEPTDIR ] ; then 
+         runcmd "cp $TMPDIR/$FNAME.ll $OUTDIR/$FNAME.ll"
+      fi
    fi
-fi
 
-if [ $GENLL ] ; then
-   [ $VERBOSE ] && echo "#Step:  Disassmble	bc --> ll ..."
-   if [ $DRYRUN ] ; then
-      echo $CMD_LLA -o $TMPDIR/$FNAME.ll $TMPDIR/$FNAME.bc
-   else 
-      $HSA_LLVM_PATH/$CMD_LLA -o $TMPDIR/$FNAME.ll $TMPDIR/$FNAME.bc
-      rc=$?
+   [ $VERBOSE ] && echo "#Step:  Link(llvm-link)	bc --> lnkd.bc ..."
+   runcmd "$LC_PATH/$CMD_LLL $TMPDIR/$FNAME.bc $LIBGCN/lib/libamdgcn.$LC_MCPU.bc -o $TMPDIR/$FNAME.lnkd.bc" 
+
+   if [ $GENLL ] ; then
+      [ $VERBOSE ] && echo "#Step:  Disassemble	lnkd.bc --> lnkd.ll ..."
+      runcmd "$LC_PATH/$CMD_LLA -o $TMPDIR/$FNAME.lnkd.ll $TMPDIR/$FNAME.lnkd.bc"
+      if [ ! $KEEPTDIR ] ; then 
+         runcmd "cp $TMPDIR/$FNAME.lnkd.ll $OUTDIR/$FNAME.lnkd.ll"
+      fi
+   fi 
+
+   if [ $LLVMOPT != 0 ] ; then 
+      [ $VERBOSE ] && echo "#Step:  Optimize(opt)	lnkd.bc --> opt.bc -O$LLVMOPT ..."
+      runcmd "$LC_PATH/$CMD_OPT -o $TMPDIR/$FNAME.opt.bc $TMPDIR/$FNAME.lnkd.bc"
+
+      if [ $GENLL ] ; then
+         [ $VERBOSE ] && echo "#Step:  Disassemble	opt.bc --> opt.ll ..."
+         runcmd "$LC_PATH/$CMD_LLA -o $TMPDIR/$FNAME.opt.ll $TMPDIR/$FNAME.opt.bc"
+         if [ ! $KEEPTDIR ] ; then 
+            runcmd "cp $TMPDIR/$FNAME.opt.ll $OUTDIR/$FNAME.opt.ll"
+         fi 
+      fi 
+      LLC_BC="opt"
+   else
+      # No optimization so generate object for lnkd bc.
+      LLC_BC="lnkd"
+   fi 
+
+   [ $VERBOSE ] && echo "#Step:  llc mcpu=$LC_MCPU	$LLC_BC.bc --> gcn ..."
+   runcmd "$LC_PATH/$CMD_LLC -o $TMPDIR/$FNAME.gcn $TMPDIR/$FNAME.$LLC_BC.bc"
+ 
+   [ $VERBOSE ] && echo "#Step:  amdphdrs 	gcn --> hsaco ..."
+   runcmd "$LC_PATH/$CMD_HDR $TMPDIR/$FNAME.gcn $OUTDIR/$OUTFILE "
+
+   #fi # end of if quickpath then ... else  ...
+
+else 
+
+   # -hsail or -brig specified.   This is the OLD code path with HLC
+
+   LLVMOPT=${LLVMOPT:-2} 
+   CMD_HLC_CLC=${CMD_HLC_CLC:-clc2 -cl-std=CL2.0 $CLOPTS $INCLUDES}
+   CMD_HLC_LLA=${CMD_HLC_LLA:-llvm-dis}
+   HLC_LKOPTS=${HLC_LKOPTS:--prelink-opt -l $HLC_PATH/../lib/builtins-hsail.bc -l $HLC_PATH/../lib/builtins-gcn.bc  -l $HLC_PATH/../lib/builtins-hsail-amd-ci.bc}
+   CMD_HLC_LLL=${CMD_HLC_LLL:-llvm-link $HLC_LKOPTS}
+   CMD_HLC_OPT=${CMD_HLC_OPT:-opt -O$LLVMOPT -gpu -whole}
+   CMD_HLC_LLC=${CMD_HLC_LLC:-llc -O$LLVMOPT -march=hsail-64 -filetype=asm}
+   CMD_HLC_BRI=${CMD_HLC_BRI:-HSAILasm}
+   CMD_HLC_ASM=${CMD_HLC_ASM:-HSAILasm -disassemble}
+   if [ $GEN_DEBUG ]  ; then 
+      export LIBHSAIL_OPTIONS_APPEND="-g -include-source"
    fi
-   if [ $rc != 0 ] ; then 
-      echo "ERROR:  The following command failed with return code $rc."
-      echo "        $CMD_LLA -o $TMPDIR/$FNAME.ll $TMPDIR/$FNAME.bc"
-      do_err $rc
-   fi
-fi
 
-[ $VERBOSE ] && echo "#Step:  Link(llvm-link)	bc --> lnkd.bc ..."
-if [ $DRYRUN ] ; then
-   echo $CMD_LLL -o $TMPDIR/$FNAME.lnkd.bc $TMPDIR/$FNAME.bc  
-else
-   $HSA_LLVM_PATH/$CMD_LLL -o $TMPDIR/$FNAME.lnkd.bc $TMPDIR/$FNAME.bc 
-   rc=$?
-fi
-if [ $rc != 0 ] ; then 
-   echo "ERROR:  The following command failed with return code $rc."
-   echo "        $HSA_LLVM_PATH/$CMD_LLL -o $TMPDIR/$FNAME.lnkd.bc $TMPDIR/$FNAME.bc"
-   do_err $rc
-fi
+   [ $VERBOSE ] && echo "#Step:  Compile(clc2)	cl --> bc ..."
+   runcmd "$HLC_PATH/$CMD_HLC_CLC -o $TMPDIR/$FNAME.bc $INDIR/$CLNAME"
 
-[ $VERBOSE ] && echo "#Step:  Optimize(opt)	lnkd.bc --> opt.bc -O$LLVMOPT ..."
-if [ $DRYRUN ] ; then
-   echo $CMD_OPT -o $TMPDIR/$FNAME.opt.bc $TMPDIR/$FNAME.lnkd.bc
-else
-   $HSA_LLVM_PATH/$CMD_OPT -o $TMPDIR/$FNAME.opt.bc $TMPDIR/$FNAME.lnkd.bc
-   rc=$?
-fi
-if [ $rc != 0 ] ; then 
-   echo "ERROR:  The following command failed with return code $rc."
-   echo "        $CMD_OPT -o $TMPDIR/$FNAME.opt.bc $TMPDIR/$FNAME.lnkd.bc"
-   do_err $rc
-fi
+   [ $VERBOSE ] && echo "#Step:  Link(llvm-link)	bc --> lnkd.bc ..."
+   runcmd "$HLC_PATH/$CMD_HLC_LLL -o $TMPDIR/$FNAME.lnkd.bc $TMPDIR/$FNAME.bc "
 
-[ $VERBOSE ] && echo "#Step:  llc arch=hsail	opt.bc --> hsail ..."
-if [ $DRYRUN ] ; then
-   echo $HSA_LLVM_PATH/$CMD_LLC -o $TMPDIR/$FNAME.hsail $TMPDIR/$FNAME.opt.bc
-else
-   $HSA_LLVM_PATH/$CMD_LLC -o $TMPDIR/$FNAME.hsail $TMPDIR/$FNAME.opt.bc
-   rc=$?
-   if [ $rc != 0 ] ; then 
-      echo "ERROR:  The following command failed with return code $rc."
-      echo "        $HSA_LLVM_PATH/$CMD_LLC -o $TMPDIR/$FNAME.hsail $TMPDIR/$FNAME.opt.bc"
-      do_err $rc
-   fi
-fi
+   [ $VERBOSE ] && echo "#Step:  Optimize(opt)	lnkd.bc --> opt.bc -O$LLVMOPT ..."
+   runcmd "$HLC_PATH/$CMD_HLC_OPT -o $TMPDIR/$FNAME.opt.bc $TMPDIR/$FNAME.lnkd.bc"
 
-if [ "$HSAILLIB" != "" ] ; then 
+   [ $VERBOSE ] && echo "#Step:  llc arch=hsail	opt.bc --> hsail ..."
+   runcmd "$HLC_PATH/$CMD_HLC_LLC -o $TMPDIR/$FNAME.hsail $TMPDIR/$FNAME.opt.bc"
+
+   if [ "$HSAILLIB" != "" ] ; then 
    # An HSAILLIB hsail_lib.hsail requires a corresponding hsail_lib.h that 
    # the programmer included in his .cl.  This header resulted in the generation of 
    # "decl prog functions" at the top of his hsail for every function in his header functions. 
@@ -387,45 +469,18 @@ if [ "$HSAILLIB" != "" ] ; then
       rm $finalfile
       rm $noprogfile
    fi
-fi
+   fi
 
-[ $VERBOSE ] && echo "#Step:  HSAILasm	hsail --> $OUTFILE -O$LLVMOPT ..."
-if [ $DRYRUN ] ; then
-   echo $CMD_BRI -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.hsail
-else
-   $HSA_LLVM_PATH/$CMD_BRI -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.hsail
-   rc=$?
-   if [ $rc != 0 ] ; then 
-      echo "ERROR:  The following command failed with return code $rc."
-      echo "        $CMD_BRI -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.hsail"
-      do_err $rc
-   fi
-fi
+   [ $VERBOSE ] && echo "#Step:  HSAILasm	hsail --> $OUTFILE -O$LLVMOPT ..."   
+   runcmd "$HLC_PATH/$CMD_HLC_BRI -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.hsail"
 
-if [ $GEN_IL ] ; then 
-   [ $VERBOSE ] && echo "#Step:  HSAILasm   	brig --> $HSAILNAME ..."
-   if [ $DRYRUN ] ; then
-      echo $CMD_ASM -o $HSAILDIR/$HSAILNAME $OUTDIR/$OUTFILE
-   else
-      $HSA_LLVM_PATH/$CMD_ASM -o $HSAILDIR/$HSAILNAME $OUTDIR/$OUTFILE
-      rc=$?
+   if [ $GEN_IL ] ; then 
+      [ $VERBOSE ] && echo "#Step:  HSAILasm   	brig --> $FNAME.hsail ..."
+      runcmd "$HLC_PATH/$CMD_HLC_ASM -o $OUTDIR/$FNAME.hsail $OUTDIR/$OUTFILE"
    fi
-   if [ $rc != 0 ] ; then 
-      echo "ERROR:  The following command failed with return code $rc."
-      echo "        $CMD_ASM -o $HSAILDIR/$HSAILNAME $OUTDIR/$OUTFILE"
-      do_err $rc
-   fi
+
 fi
 
 # cleanup
-if [ ! $KEEPTDIR ] ; then 
-   if [ $DRYRUN ] ; then 
-      echo "rm -rf $TMPDIR"
-   else
-      rm -rf $TMPDIR
-   fi
-fi
-
-[ $VERBOSE ] && echo "#Info:  Done"
-
+do_err 0
 exit 0

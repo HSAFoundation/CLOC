@@ -4,7 +4,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-# Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  
+# Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
 # AMD is granting you permission to use this software and documentation (if any) (collectively, the 
 # Materials) pursuant to the terms and conditions of the Software License Agreement included with the 
@@ -47,7 +47,7 @@ function write_copyright_template(){
 /bin/cat  <<"EOF"
 /*
 
-  Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  
+  Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 
   AMD is granting you permission to use this software and documentation (if any) (collectively, the 
   Materials) pursuant to the terms and conditions of the Software License Agreement included with the 
@@ -403,7 +403,6 @@ static int          SNK_NextTaskId = 0 ;
 
 /* Context(cl file) specific globals */
 hsa_agent_t                      __CN__Agent;
-hsa_ext_program_t                __CN__HsaProgram;
 hsa_executable_t                 __CN__Executable;
 hsa_region_t                     __CN__KernargRegion;
 int                              __CN__FC = 0; 
@@ -411,7 +410,7 @@ int                              __CN__FC = 0;
 /* Global variables */
 hsa_queue_t*                     Sync_CommandQ;
 hsa_signal_t                     Sync_Signal; 
-#include "_CN__brig.h" 
+#include "_CN__hsaco.h" 
 
 status_t SNACK_Init();
 
@@ -430,7 +429,7 @@ status_t __CN__InitContext(){
     char name[64] = { 0 };
     err = hsa_agent_get_info(__CN__Agent, HSA_AGENT_INFO_NAME, name);
     ErrorCheck(Querying the agent name, err);
-    /* printf("The agent name is %s.\n", name); */
+    /* printf("The agent name is %s.\n", name);  */
 
     /* Query the maximum size of the queue.  */
     uint32_t queue_size = 0;
@@ -438,41 +437,21 @@ status_t __CN__InitContext(){
     ErrorCheck(Querying the agent maximum queue size, err);
     /* printf("The maximum queue size is %u.\n", (unsigned int) queue_size);  */
 
-    /* Create hsa program.  */
-    memset(&__CN__HsaProgram,0,sizeof(hsa_ext_program_t));
-    err = hsa_ext_program_create(HSA_MACHINE_MODEL_LARGE, HSA_PROFILE_FULL, HSA_DEFAULT_FLOAT_ROUNDING_MODE_DEFAULT, NULL, &__CN__HsaProgram);
-    ErrorCheck(Create the program, err);
-
-    /* Add the BRIG module to hsa program.  */
-    err = hsa_ext_program_add_module(__CN__HsaProgram, (hsa_ext_module_t) __CN__HSA_BrigMem );
-    ErrorCheck(Adding the brig module to the program, err);
-
-    /* Determine the agents ISA.  */
-    hsa_isa_t isa;
-    err = hsa_agent_get_info(__CN__Agent, HSA_AGENT_INFO_ISA, &isa);
-    ErrorCheck(Query the agents isa, err);
-
-    /* * Finalize the program and extract the code object.  */
-    hsa_ext_control_directives_t control_directives;
-    memset(&control_directives, 0, sizeof(hsa_ext_control_directives_t));
-    hsa_code_object_t code_object;
-    err = hsa_ext_program_finalize(__CN__HsaProgram, isa, 0, control_directives,__FOPTION__, HSA_CODE_OBJECT_TYPE_PROGRAM, &code_object);
-    ErrorCheck(Finalizing the program, err);
-
-    /* Destroy the program, it is no longer needed.  */
-    err=hsa_ext_program_destroy(__CN__HsaProgram);
-    ErrorCheck(Destroying the program, err);
+    /* Extract the code object.  */
+    hsa_code_object_t code_object = {0};
+    err = hsa_code_object_deserialize(__CN__HSA_CodeObjMem, __CN__HSA_CodeObjMemSz, NULL, &code_object);
+    ErrorCheck(Deserialize code object , err);
 
     /* Create the empty executable.  */
-    err = hsa_executable_create(HSA_PROFILE_FULL, HSA_EXECUTABLE_STATE_UNFROZEN, "", &__CN__Executable);
+    err = hsa_executable_create(HSA_PROFILE_FULL, HSA_EXECUTABLE_STATE_UNFROZEN, NULL, &__CN__Executable);
     ErrorCheck(Create the executable, err);
 
     /* Load the code object.  */
-    err = hsa_executable_load_code_object(__CN__Executable, __CN__Agent, code_object, "");
+    err = hsa_executable_load_code_object(__CN__Executable, __CN__Agent, code_object, NULL);
     ErrorCheck(Loading the code object, err);
 
     /* Freeze the executable; it can now be queried for symbols.  */
-    err = hsa_executable_freeze(__CN__Executable, "");
+    err = hsa_executable_freeze(__CN__Executable, NULL);
     ErrorCheck(Freeze the executable, err);
 
     /* Find a memory region that supports kernel arguments.  */
@@ -481,9 +460,8 @@ status_t __CN__InitContext(){
     err = (__CN__KernargRegion.handle == (uint64_t)-1) ? HSA_STATUS_ERROR : HSA_STATUS_SUCCESS;
     ErrorCheck(Finding a kernarg memory region, err);
 
-
     /*  Create a queue using the maximum size.  */
-    err = hsa_queue_create(__CN__Agent, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &Sync_CommandQ);
+    err = hsa_queue_create(__CN__Agent, queue_size, HSA_QUEUE_TYPE_MULTI, NULL, NULL, UINT32_MAX, UINT32_MAX, &Sync_CommandQ);
     ErrorCheck(Creating the queue, err);
 
     /*  Create signal to wait for the dispatch to finish. this Signal is only used for synchronous execution  */ 
@@ -494,7 +472,7 @@ status_t __CN__InitContext(){
     int stream_num;
     for ( stream_num = 0 ; stream_num < SNK_MAX_STREAMS ; stream_num++){
        /* printf("calling queue create for stream %d\n",stream_num); */
-       err=hsa_queue_create(__CN__Agent, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &Stream_CommandQ[stream_num]);
+       err=hsa_queue_create(__CN__Agent, queue_size, HSA_QUEUE_TYPE_MULTI, NULL, NULL, UINT32_MAX, UINT32_MAX, &Stream_CommandQ[stream_num]);
        ErrorCheck(Creating the Stream Command Q, err);
     }
 
@@ -527,7 +505,7 @@ EOF
 
 function write_InitKernel_template(){
 /bin/cat <<"EOF"
-#include "amd_kernel_code.h"
+#include "amd_hsa_kernel_code.h"
 extern status_t _KN__init(const int printStats){
     if (__CN__FC == 0 ) {
        status_t status = __CN__InitContext();
@@ -538,8 +516,9 @@ extern status_t _KN__init(const int printStats){
     hsa_status_t err;
 
     /* Extract the symbol from the executable.  */
-    /* printf("Kernel name _KN__: Looking for symbol %s\n","__OpenCL__KN__kernel"); */
-    err = hsa_executable_get_symbol(__CN__Executable, NULL, "&__OpenCL__KN__kernel", __CN__Agent , 0, &_KN__Symbol);
+    /* printf("Kernel name _KN_: Looking for symbol %s\n","_KN_");  */
+//    err = hsa_executable_get_symbol(__CN__Executable, NULL, "&__OpenCL__KN__kernel", __CN__Agent , 0, &_KN__Symbol);
+    err = hsa_executable_get_symbol(__CN__Executable, NULL, "_KN_", __CN__Agent , 0, &_KN__Symbol);
     ErrorCheck(Extract the symbol from the executable, err);
 
     /* Extract dispatch information from the symbol */
@@ -558,7 +537,7 @@ extern status_t _KN__init(const int printStats){
     _KN__KernargFront = -1; 
 
     if (printStats == 1) {
-       printf("Post-finalization statistics for kernel: _KN_ \n" );
+       printf("GCN code object statistics for kernel: _KN_ \n" );
        amd_kernel_code_t *akc = (amd_kernel_code_t*) _KN__Kernel_Object;
        printf("   wavefront_sgpr_count: ");
        printf("%u\n", (uint32_t) akc->wavefront_sgpr_count);
@@ -813,11 +792,11 @@ __ARGL=""
 __WRAPPRE="_"
 __SEDCMD=" "
 
-#   if [ $GENW_ADD_DUMMY ] ; then 
-#      echo
-#      echo "WARNING:  DUMMY ARGS ARE ADDED FOR STABLE COMPILER "
-#      echo
-#   fi
+   if [ $GENW_ADD_DUMMY ] ; then 
+      echo
+      echo "WARNING:  DUMMY ARGS ARE ADDED FOR STABLE COMPILER "
+      echo
+   fi
 
 #  Read the CLF and build a list of kernels and args, one kernel and set of args per line of KARGLIST file
    cpp $__CLF | sed -e '/__kernel/,/)/!d' |  sed -e ':a;$!N;s/\n/ /;ta;P;D' | sed -e 's/__kernel/\n__kernel/g'  | grep "__kernel" | \
