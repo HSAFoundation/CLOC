@@ -3,7 +3,7 @@ Cloc Install Instructions
 
 Warning.  These instructions are for CLOC 1.0 (March 2016 Update) .
 
-This set of instructions can be used to install a comprehensive HSA software stack and the Cloc utility for Ubuntu.  In addition to Linux, you must have an HSA compatible system such as a Kaveri processor. There are four major steps to this process:
+This set of instructions can be used to install a comprehensive HSA software stack and the Cloc utility for Ubuntu.  In addition to Linux, you must have an HSA compatible system such as a Kaveri processor, a Carrizo processor, or a fiji card. There are four steps to this process:
 
 - [1. Prepare for Upgrade](#Prepare)
 - [2. Install Linux Kernel](#Boot)
@@ -71,7 +71,7 @@ sudo reboot
 3. Install HSA Software
 =======================
 
-## Install HSA 1.0F Runtime
+## Install Boltzman 1.0 Runtime
 
 ```
 mkdir ~/git
