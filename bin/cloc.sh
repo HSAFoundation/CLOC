@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.5
+PROGVERSION=1.0.6
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -60,6 +60,7 @@ function usage(){
    Options without values:
     -ll       Generate dissassembled LLVM IR, for info only
     -g        Generate debug information
+    -noqp     No quickpath, Use LLVM IR commands
     -version  Display version of cloc then exit
     -v        Verbose messages
     -n        Dryrun, do nothing, show commands that would execute
@@ -171,6 +172,7 @@ while [ $# -gt 0 ] ; do
       -brig) 		GEN_BRIG=true;; 
       -g) 		GEN_DEBUG=true;; 
       -ll) 		GENLL=true;;
+      -noqp) 		NOQP=true;;
       -clopts) 		CLOPTS=$2; shift ;; 
       -I) 		INCLUDES="$INCLUDES -I $2"; shift ;; 
       -opt) 		LLVMOPT=$2; shift ;; 
@@ -339,67 +341,68 @@ fi
 
 rc=0
 
-#if [ ! $GENLL ] ; then 
-#   quickpath=true
-#fi
-
 if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then 
 
-   # No HSAIL or Brig.  This is the new code path
+   # No HSAIL or Brig.  This is the new code object path
    # Use the Lightning Compiler to generate HSA code object
 
-   # bad clang for doing quickpath
-   #if [ $quickpath ] ; then 
-   #   [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> hsaco ..."
-   #   runcmd "$AMDLLVM/bin/$CMD_CLC $QPOPTS -o $OUTDIR/$FNAME.hsaco $INDIR/$CLNAME"
-   #else 
-
-   [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> bc ..."
-   runcmd "$AMDLLVM/bin/$CMD_CLC -c -emit-llvm -o $TMPDIR/$FNAME.bc $INDIR/$CLNAME"
-
-   if [ $GENLL ] ; then
-      [ $VERBOSE ] && echo "#Step:  Disassemble	bc --> ll ..."
-      runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.ll $TMPDIR/$FNAME.bc"
-      if [ ! $KEEPTDIR ] ; then 
-         runcmd "cp $TMPDIR/$FNAME.ll $OUTDIR/$FNAME.ll"
-      fi
+   if [ $NOQP ] || [ $GENLL ] ; then 
+      quickpath="false"
+   else
+      quickpath="true"
    fi
 
-   [ $VERBOSE ] && echo "#Step:  Link(llvm-link)	bc --> lnkd.bc ..."
-   runcmd "$AMDLLVM/bin/$CMD_LLL $TMPDIR/$FNAME.bc $LIBGCN/lib/libamdgcn.$LC_MCPU.bc -o $TMPDIR/$FNAME.lnkd.bc" 
-
-   if [ $GENLL ] ; then
-      [ $VERBOSE ] && echo "#Step:  Disassemble	lnkd.bc --> lnkd.ll ..."
-      runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.lnkd.ll $TMPDIR/$FNAME.lnkd.bc"
-      if [ ! $KEEPTDIR ] ; then 
-         runcmd "cp $TMPDIR/$FNAME.lnkd.ll $OUTDIR/$FNAME.lnkd.ll"
-      fi
-   fi 
-
-   if [ $LLVMOPT != 0 ] ; then 
-      [ $VERBOSE ] && echo "#Step:  Optimize(opt)	lnkd.bc --> opt.bc -O$LLVMOPT ..."
-      runcmd "$AMDLLVM/bin/$CMD_OPT -o $TMPDIR/$FNAME.opt.bc $TMPDIR/$FNAME.lnkd.bc"
+   if [ "$quickpath" == "true" ] ; then 
+      [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> hsaco ..."
+      runcmd "$AMDLLVM/bin/$CMD_CLC $QPOPTS -o $OUTDIR/$FNAME.hsaco $INDIR/$CLNAME"
+   else 
+      # Run 5 steps, clang,link,opt,llc,amdphdrs
+      [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> bc ..."
+      runcmd "$AMDLLVM/bin/$CMD_CLC -c -emit-llvm -o $TMPDIR/$FNAME.bc $INDIR/$CLNAME"
 
       if [ $GENLL ] ; then
-         [ $VERBOSE ] && echo "#Step:  Disassemble	opt.bc --> opt.ll ..."
-         runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.opt.ll $TMPDIR/$FNAME.opt.bc"
+         [ $VERBOSE ] && echo "#Step:  Disassemble	bc --> ll ..."
+         runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.ll $TMPDIR/$FNAME.bc"
          if [ ! $KEEPTDIR ] ; then 
-            runcmd "cp $TMPDIR/$FNAME.opt.ll $OUTDIR/$FNAME.opt.ll"
-         fi 
+            runcmd "cp $TMPDIR/$FNAME.ll $OUTDIR/$FNAME.ll"
+         fi
+      fi
+
+      [ $VERBOSE ] && echo "#Step:  Link(llvm-link)	bc --> lnkd.bc ..."
+      runcmd "$AMDLLVM/bin/$CMD_LLL $TMPDIR/$FNAME.bc $LIBGCN/lib/libamdgcn.$LC_MCPU.bc -o $TMPDIR/$FNAME.lnkd.bc" 
+
+      if [ $GENLL ] ; then
+         [ $VERBOSE ] && echo "#Step:  Disassemble	lnkd.bc --> lnkd.ll ..."
+         runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.lnkd.ll $TMPDIR/$FNAME.lnkd.bc"
+         if [ ! $KEEPTDIR ] ; then 
+            runcmd "cp $TMPDIR/$FNAME.lnkd.ll $OUTDIR/$FNAME.lnkd.ll"
+         fi
       fi 
-      LLC_BC="opt"
-   else
-      # No optimization so generate object for lnkd bc.
-      LLC_BC="lnkd"
-   fi 
 
-   [ $VERBOSE ] && echo "#Step:  llc mcpu=$LC_MCPU	$LLC_BC.bc --> gcn ..."
-   runcmd "$AMDLLVM/bin/$CMD_LLC -o $TMPDIR/$FNAME.gcn $TMPDIR/$FNAME.$LLC_BC.bc"
+      if [ $LLVMOPT != 0 ] ; then 
+         [ $VERBOSE ] && echo "#Step:  Optimize(opt)	lnkd.bc --> opt.bc -O$LLVMOPT ..."
+         runcmd "$AMDLLVM/bin/$CMD_OPT -o $TMPDIR/$FNAME.opt.bc $TMPDIR/$FNAME.lnkd.bc"
+
+         if [ $GENLL ] ; then
+            [ $VERBOSE ] && echo "#Step:  Disassemble	opt.bc --> opt.ll ..."
+            runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.opt.ll $TMPDIR/$FNAME.opt.bc"
+            if [ ! $KEEPTDIR ] ; then 
+               runcmd "cp $TMPDIR/$FNAME.opt.ll $OUTDIR/$FNAME.opt.ll"
+            fi 
+         fi 
+         LLC_BC="opt"
+      else
+         # No optimization so generate object for lnkd bc.
+         LLC_BC="lnkd"
+      fi 
+
+      [ $VERBOSE ] && echo "#Step:  llc mcpu=$LC_MCPU	$LLC_BC.bc --> gcn ..."
+      runcmd "$AMDLLVM/bin/$CMD_LLC -o $TMPDIR/$FNAME.gcn $TMPDIR/$FNAME.$LLC_BC.bc"
  
-   [ $VERBOSE ] && echo "#Step:  amdphdrs 	gcn --> hsaco ..."
-   runcmd "$AMDLLVM/bin/$CMD_HDR $TMPDIR/$FNAME.gcn $OUTDIR/$OUTFILE "
+      [ $VERBOSE ] && echo "#Step:  amdphdrs 	gcn --> hsaco ..."
+      runcmd "$AMDLLVM/bin/$CMD_HDR $TMPDIR/$FNAME.gcn $OUTDIR/$OUTFILE "
 
-   #fi # end of if quickpath then ... else  ...
+   fi # end of if quickpath then ... else  ...
 
 else 
 

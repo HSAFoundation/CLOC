@@ -9,6 +9,10 @@
 CPULABEL=`cat /proc/cpuinfo | grep -m1 "model name" | cut -d: -f2 | cut -d, -f1`
 VENDOR=`echo $CPULABEL | cut -d" " -f1`
 CPU=`echo $CPULABEL | cut -d" " -f2`
+if [ $CPU == "A10" ] ; then 
+   CPU=`echo $CPULABEL | cut -d" " -f2-3`
+fi
+
 if [ $VENDOR != "AMD" ] ; then 
    echo fiji
    exit 0
@@ -17,6 +21,8 @@ fi
 if [ "$CPU" == "A10-7850K" ] || \
    [ "$CPU" == "A10-7870K" ] || \
    [ "$CPU" == "A10-7700K" ] || \
+   [ "$CPU" == "A6-7400K" ] || \
+   [ "$CPU" == "A10 PRO-7350B" ] || \
    [ "$CPU" == "A10-7800K" ] ; then 
    echo kaveri 
    exit 0

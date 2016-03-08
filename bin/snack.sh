@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.5
+PROGVERSION=1.0.6
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -200,7 +200,7 @@ while [ $# -gt 0 ] ; do
       -libgcn)          LIBGCN=$2; shift ;;
       -hsart)           HSA_RT=$2; shift ;;
       -m32)		ADDRMODE=32;;
-      -mcpu)            LC_MCPU=$2; shift ;;
+      -mcpu)            MCPU=$2; shift ;;
 
       -g) 		GEN_DEBUG=true;; 
       -hsaillib)        HSAILLIB=$2; shift ;; 
@@ -332,8 +332,8 @@ fi
 if [ $LIBGCN ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -libgcn $LIBGCN"
 fi
-if [ $LC_MCPU ] ; then
-   OTHERCLOCFLAGS="$OTHERCLOCFLAGS -mcpu $LC_MCPU"
+if [ $MCPU ] ; then
+   OTHERCLOCFLAGS="$OTHERCLOCFLAGS -mcpu $MCPU"
 fi
 
 if [ $GEN_DEBUG ] ; then
@@ -433,6 +433,10 @@ else
    hexdump -v -e '"0x" 1/1 "%02X" ","' $TMPDIR/updated.hsaco >> $FULLHSACO_HFILE
    echo "};" >> $FULLHSACO_HFILE
    echo "size_t _${SYMBOLNAME}_HSA_CodeObjMemSz = sizeof(_${SYMBOLNAME}_HSA_CodeObjMem);" >> $FULLHSACO_HFILE
+   if [ ! $MCPU ] ; then
+      MCPU=`$CLOC_PATH/mymcpu`
+   fi
+   echo "const char* _${SYMBOLNAME}_MCPU = \"$MCPU\";" >> $FULLHSACO_HFILE
 fi
 
 if [ $MAKEOBJ ] ; then 

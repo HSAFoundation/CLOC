@@ -418,8 +418,31 @@ status_t __CN__InitContext(){
 
     hsa_status_t err;
 
-    if (HSA_FC == 0) SNACK_Init();
+    /*  This code checks if the context was built for the current processor */
+    FILE *cpuinfo = fopen("/proc/cpuinfo", "rb");
+    char *arg = 0;
+    char* model;
+    size_t size = 0;
+    while(getdelim(&arg, &size, 0, cpuinfo) != -1) { };
+    const char* m48="model		: 48";
+    const char* m96="model		: 96";
+    const char* f21="cpu family	: 21";
+    model="fiji"; /* Default is fiji card,  if not kaveri or carrizo */
+    if ( strstr(arg,f21) != NULL ) {  /* Assume non AMD chips are using a fiji card */
+       if( strstr(arg,m48) != NULL ) model="kaveri";
+       else if( strstr(arg,m96) != NULL ) model="carrizo";
+    }
+    free(arg);
+    fclose(cpuinfo);
+    if (strcmp(model,__CN__MCPU) != 0) {
+       printf("ERROR: This processor assumes device is %s\n", model);
+       printf("       The device object code was compiled for a %s.\n",__CN__MCPU );
+       printf("       Recompile or run this binary with a %s.\n",__CN__MCPU );
+       exit(1); 
+    }
 
+    if (HSA_FC == 0) SNACK_Init();
+    
     /* Iterate over the agents and pick the gpu agent */
     err = hsa_iterate_agents(get_gpu_agent, &__CN__Agent);
     if(err == HSA_STATUS_INFO_BREAK) { err = HSA_STATUS_SUCCESS; }
