@@ -51,7 +51,7 @@ mount the appropriate MLNX_OFED iso
 
 ## Install HSA Linux Kernel Drivers 
 
-These instructions are for Boltzman release of HSA 1.0.
+These instructions are for Boltzman release of HSA 1.0.  
 
 Execute these commands:
 
@@ -83,11 +83,12 @@ sudo dpkg -i hsa-runtime-dev*.deb
 
 ## Install CLOC 1.0
 
+Be sure to clone the 1.0 branch. 
+
 ```
 cd ~/git
 git clone -b 1.0 https://github.com/HSAFoundation/cloc
-cd cloc/packages/ubuntu
-sudo dpkg -i *.deb
+sudo dpkg -i cloc/packages/ubuntu/*.deb
 ```
 
 ## Test if HSA is Active.
@@ -115,8 +116,9 @@ Can run HSA.................................YES
 
 If it does not detect a valid GPU ID (last two entries are NO), it is possible that you need to turn the IOMMU on in the firmware.  Reboot your system and interrupt the boot process to get the firmware screen. Then find the menu to turn on IOMMU and switch from disabled to enabled.  Then select "save and exit" to boot your system.  Then rerun the test script.
 
-
 ## Set LD_LIBRARY_PATH
+
+The hsa-runtime-dev package does not configure the HSA runtime libraries with ldconfig.  So most HSA software requires that you set LD_LIBRARY_PATH as follows.  You may want to do set this environment variable in /etc/environment.
 
 ```
 export LD_LIBRARY_PATH=/opt/hsa/lib
@@ -124,7 +126,7 @@ export LD_LIBRARY_PATH=/opt/hsa/lib
 
 ## Test snack and cloc examples
 
-We recommend that cloc.sh, snack,sh, and printhsail be available in your path.  You can symbolically link them or add to PATH as follows:
+We recommend that cloc.sh and snack.sh are available in your path.  You can symbolically link them or add to PATH as follows:
 ```
 #
 # Either put /opt/amd/cloc/bin in your PATH 
@@ -134,9 +136,8 @@ export PATH=$PATH:/opt/amd/cloc/bin
 sudo ln -sf /opt/amd/cloc/bin/cloc.sh /usr/local/bin/cloc.sh
 sudo ln -sf /opt/amd/cloc/bin/snack.sh /usr/local/bin/snack.sh
 sudo ln -sf /opt/amd/cloc/bin/snackhsail.sh /usr/local/bin/snackhsail.sh
-sudo ln -sf /opt/amd/cloc/bin/printhsail /usr/local/bin/printhsail
 ```
-Now you can test the snack and cloc eamples
+Now you can test the snack and cloc examples as follows.
 ```
 cd ~/git/cloc/examples/snack/helloworld
 ./buildrun.sh
@@ -147,14 +148,18 @@ make test
 
 ## Install HCC Compiler from Multicoreware  (OPTIONAL)
 
+Binary versions of the HCC compiler can be downloaded from the Multicoreware repository in bitbucket.org.   Here is the latest version as of this update to these install instructions.
+
 ```
 mkdir -p $HOME/debs
 cd $HOME/debs
-wget https://bitbucket.org/multicoreware/cppamp-driver-ng/downloads/hcc-0.8.1545-15f927e-ee0f474-183de0b-Linux.deb
-sudo dpkg -i hcc-0.8.1545-15f927e-ee0f474-183de0b-Linux.deb
+wget https://bitbucket.org/multicoreware/hcc/downloads/hcc-0.9.16045-c4b0995-ff03947-5a1009a-Linux.deb
+sudo dpkg -i hcc-0.9.16045-c4b0995-ff03947-5a1009a-Linux.deb
 ```
 
 ## Install Development GCC6 OpenMP for HSA Compiler (OPTIONAL)
+
+GCC 6 is currently in development.  We build versions of the development compiler for testing the HSA plugin.   These can be downloaded and installed as follows. 
 
 ```
 cd $HOME/git
