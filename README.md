@@ -1,4 +1,4 @@
-CLOC - V 1.0.5 (HSA 1.0F) 
+CLOC - V 1.0.7 (HSA 1.0F) 
 =========================
 
 CLOC:  CL Offline Compiler

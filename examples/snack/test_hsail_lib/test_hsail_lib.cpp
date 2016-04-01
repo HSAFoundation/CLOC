@@ -5,9 +5,9 @@
 using namespace std;
 #include "test_hsail_lib.h"
 static const int NUMELEMENTS = 40;
-float *inArray = new float[NUMELEMENTS];
-float *outArray = new float[NUMELEMENTS];
 int main(int argc, char *argv[]) {
+	float *inArray = NEW_GLOBAL(float,NUMELEMENTS);
+	float *outArray = NEW_GLOBAL(float,NUMELEMENTS);
 	// initialize inArray
 	for (int i=0; i<NUMELEMENTS; i++) {inArray[i] =  1.0 / ((float)i + 1.0); }
 	
