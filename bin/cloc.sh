@@ -184,7 +184,7 @@ while [ $# -gt 0 ] ; do
       -path)            CLOC_PATH=$2; shift ;;
       -amdllvm)         AMDLLVM=$2; shift ;;
       -libgcn)          LIBGCN=$2; shift ;;
-      -hlcpath)         HLC_PATH =$2; shift ;;
+      -hlcpath)         HLC_PATH=$2; shift ;;
       -h) 	        usage ;; 
       -help) 	        usage ;; 
       --help) 	        usage ;; 
