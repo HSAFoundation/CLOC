@@ -10,8 +10,8 @@ snkcmd=snack.sh # could also use snackhsail.sh
 # Compile accelerated functions
 echo 
 if [ -f matmulKernels.o ] ; then rm matmulKernels.o ; fi
-echo /opt/amd/cloc/bin/$snkcmd -v -c  matmulKernels.cl 
-/opt/amd/cloc/bin/$snkcmd -v -c  matmulKernels.cl 
+echo "$snkcmd -v -c  matmulKernels.cl "
+$snkcmd -v -c  matmulKernels.cl 
 
 # Compile Main .c  and link to accelerated functions in matmulKernels.o
 echo 

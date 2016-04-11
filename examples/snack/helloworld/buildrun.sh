@@ -9,7 +9,7 @@ if [ "$1" == "f" ] ; then
    snack.sh -fort -c hw.cl 
 else
    echo "snack.sh -c hw.cl "
-   snack.sh -c hw.cl 
+   snack.sh -vv -c hw.cl 
 fi
 
 #  Compile the main program and link to hw.o

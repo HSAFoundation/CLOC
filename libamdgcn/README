@@ -1,0 +1,40 @@
+
+libamdgcn is a superset of libclc.  It is intended to be a 
+device library for amdgcn.  It will include device support for the 
+lightning compiler, services like printf, dynamic parallelism support, 
+support for ATMI, and device runtime support for OpenMP. 
+The CLOC (CL Offline Compiler) requires the installation of libamdgcn.
+It normally expects it to be found at /opt/rocm/libamdgcn.
+
+
+Install Procedure:
+
+dpkg -i libamdgcn*.deb
+
+or 
+
+rpm -i  libamdgcn*.rpm
+
+
+Build Procedure:
+
+# Download libclc git repository
+mkdir -p ~/git
+cd ~/git
+git clone http://llvm.org/git/libclc.git
+
+# You must install amdllvm to build libamdgcn.
+# Make libamdgcn
+cp -rp . /tmp/libamdgcn
+cd /tmp/libamdgcn
+# Review Makefile for corect location of libclc
+make 
+sudo make install
+
+Attention developers: To add new routines to this library, 
+put the source somewhere in the lib directory hierarchy and 
+add a line to the SOURCES file with the tag LIBAMDGCN. 
+Lines with the tag LIBCLC are sources compiled from libclc.   
+
+Any include files in the include directory will override
+includes found in libclc. 

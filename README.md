@@ -1,5 +1,5 @@
-CLOC - V 1.0.7 (HSA 1.0F) 
-=========================
+CLOC - V 1.0.8 
+==============
 
 CLOC:  CL Offline Compiler
        Generate HSA code object from a cl (Kernel c Language) file.

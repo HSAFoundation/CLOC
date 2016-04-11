@@ -102,7 +102,7 @@ function usage(){
     -s        <symbolname>   Default=filename 
     -p        <path>         $HSA_LLVM_PATH or <sdir> if HSA_LLVM_PATH not set
                              <sdir> is actual directory of snack.sh 
-    -hlcpath  <path>         Default=/opt/amd/hlc3.2/bin
+    -hlcpath  <path>         Default=/opt/rocm/hlc3.2/bin
     -rp       <HSA RT path>  Default=$HSA_RUNTIME_PATH or /opt/hsa
     -o        <outfilename>  Default=<filename>.<ft> 
     -foption  <fnlizer opts> Default=""  Finalizer options
@@ -222,7 +222,7 @@ fi
 sdir=$(getdname $0)
 [ ! -L "$sdir/snack.sh" ] || sdir=$(getdname `readlink "$sdir/snack.sh"`)
 HSA_LLVM_PATH=${HSA_LLVM_PATH:-$sdir}
-HLC_PATH=${HLC_PATH:-/opt/amd/hlc3.2/bin}
+HLC_PATH=${HLC_PATH:-/opt/rocm/hlc3.2/bin}
 
 #  Set Default values
 GCCOPT=${GCCOPT:-3}

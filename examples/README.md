@@ -1,9 +1,9 @@
 ```
-Make sure to have the compiler and cloc.sh installed in /opt/amd/cloc/bin and 
+Make sure to have the compiler and cloc.sh installed in /opt/rocm/cloc/bin and 
 the HSA runtime in /opt/hsa as per the instructions in INSTALL.md. 
 
 #  Make a copy of the examples in your home directory 
-cp -r /opt/amd/cloc/examples ~/examples
+cp -r /opt/rocm/cloc/examples ~/examples
 
 #For building HSA examples. 
 cd ~/examples/hsa/vector_copy  
@@ -34,7 +34,7 @@ cd ~/examples/snack/async_vecsum
 
 ----------
 
-Copyright (c) 2014 ADVANCED MICRO DEVICES, INC.  
+Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 
 AMD is granting you permission to use this software and documentation (if any) (collectively, the 
 Materials) pursuant to the terms and conditions of the Software License Agreement included with the 

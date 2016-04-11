@@ -1,0 +1,33 @@
+uint 	__attribute__((overloadable)) get_work_dim(void);
+size_t 	__attribute__((overloadable)) get_global_id(uint dimindx);
+size_t 	__attribute__((overloadable)) get_local_id(uint dimindx);
+size_t 	__attribute__((overloadable)) get_group_id(uint dimindx);
+
+uint 	__attribute__((overloadable)) get_kernel_work_group_size(void (^block)(void));
+uint 	__attribute__((overloadable)) get_kernel_work_group_size(void (^block)(local void *, ...));
+uint 	__attribute__((overloadable)) get_kernel_preferred_work_group_size_multiple(void (^block)(void));
+uint 	__attribute__((overloadable)) get_kernel_preferred_work_group_size_multiple(void (^block)(local void *, ...));
+queue_t __attribute__((overloadable)) get_default_queue(void);
+size_t 	__attribute__((overloadable)) get_global_linear_id(void);
+size_t 	__attribute__((overloadable)) get_local_linear_id(void);
+cl_mem_fence_flags __attribute__((overloadable)) get_fence (const void *ptr);
+cl_mem_fence_flags __attribute__((overloadable)) get_fence (void *ptr);
+uint	__attribute__((overloadable)) get_sub_group_size( void );
+uint	__attribute__((overloadable)) get_max_sub_group_size( void );
+uint	__attribute__((overloadable)) get_num_sub_groups( void );
+uint	__attribute__((overloadable)) get_enqueued_num_sub_groups( void );
+uint	__attribute__((overloadable)) get_sub_group_id( void );
+uint	__attribute__((overloadable)) get_sub_group_local_id( void );
+
+int 	__attribute__((overloadable)) get_image_width(image2d_t image);
+int 	__attribute__((overloadable)) get_image_width(image2d_depth_t image);
+int 	__attribute__((overloadable)) get_image_width(image2d_msaa_t image);
+int 	__attribute__((overloadable)) get_image_width(image2d_msaa_depth_t image);
+int 	__attribute__((overloadable)) get_image_width(image3d_t image);
+int 	__attribute__((overloadable)) get_image_width(image1d_t image);
+int 	__attribute__((overloadable)) get_image_width(image1d_buffer_t image);
+int 	__attribute__((overloadable)) get_image_width(image1d_array_t image);
+int 	__attribute__((overloadable)) get_image_width(image2d_array_t image);
+int 	__attribute__((overloadable)) get_image_width(image2d_array_depth_t image);
+int 	__attribute__((overloadable)) get_image_width(image2d_array_msaa_t image);
+int 	__attribute__((overloadable)) get_image_width(image2d_array_msaa_depth_t image);

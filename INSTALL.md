@@ -126,22 +126,13 @@ export LD_LIBRARY_PATH=/opt/hsa/lib
 
 ## Test snack and cloc examples
 
-We recommend that cloc.sh and snack.sh are available in your path.  You can symbolically link them or add to PATH as follows:
+Test the snack and cloc examples as follows.
 ```
-#
-# Either put /opt/amd/cloc/bin in your PATH 
-export PATH=$PATH:/opt/amd/cloc/bin
-#
-# OR symbolic link cloc.sh and snack.sh to system path
-sudo ln -sf /opt/amd/cloc/bin/cloc.sh /usr/local/bin/cloc.sh
-sudo ln -sf /opt/amd/cloc/bin/snack.sh /usr/local/bin/snack.sh
-sudo ln -sf /opt/amd/cloc/bin/snackhsail.sh /usr/local/bin/snackhsail.sh
-```
-Now you can test the snack and cloc examples as follows.
-```
-cd ~/git/cloc/examples/snack/helloworld
+cp -rp /opt/rocm/cloc/examples/snack/helloworld /tmp/.
+cd /tmp/helloworld
 ./buildrun.sh
-cd ~/git/cloc/examples/hsa/vector_copy_codeobject
+cp -rp /opt/rocm/cloc/examples/hsa/vector_copy_codeobject  /tmp/.
+cd /tmp/vector_copy_codeobject
 make
 make test
 ```
