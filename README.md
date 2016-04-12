@@ -72,6 +72,7 @@ Software License Agreement.
    Options without values:
     -ll       Generate dissassembled LLVM IR, for info only
     -g        Generate debug information
+    -noqp     No quickpath, Use LLVM IR commands
     -version  Display version of cloc then exit
     -v        Verbose messages
     -n        Dryrun, do nothing, show commands that would execute
@@ -84,8 +85,11 @@ Software License Agreement.
     -path    <path>           $CLOC_PATH or <cdir> if CLOC_PATH not set
                               <cdir> is directory where cloc.sh is found
     -amdllvm <path>           $AMDLLVM or /opt/amd/llvm
-    -libgcn  <path>           $LIBGCN or /opt/amd/libamdgcn  
-    -hlcpath <path>           $HLC_PATH or /opt/amd/hlc3.2/bin  
+    -std=c++11 -I /opt/hsa/include -o obj/vector_copy_codeobject.o vector_copy_codeobject.cpp
+g++  obj/vector_copy_codeobject.o -L/opt/hsa/lib -lhsa-runtime64 -o vector_copy_codeobject
+cloc.sh vector_copy_codeobject.cl
+libgcn  <path>           $LIBGCN or /opt/rocm/libamdgcn  
+    -hlcpath <path>           $HLC_PATH or /opt/rocm/hlc3.2/bin  
     -mcpu    <cputype>        Default= value returned by ./mymcpu
     -clopts  <compiler opts>  Default=" "
     -I       <include dir>    Provide one directory per -I option
@@ -105,25 +109,23 @@ Software License Agreement.
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.
-
 ```
 
 
 ## The snack.sh Command 
 
 ```
-   snack: Generate host-callable "snack" functions for GPU kernels.
-          Snack generates the source code and headers for each kernel 
-          in the input filename.cl file.  The -c option will compile 
-          the source with gcc so you can link with your host application.
-          Host applicaton requires no API to use snack functions.
+   snack.sh: Generate host-callable "snack" functions for GPU kernels.
+             Snack generates the source code and headers for each kernel 
+             in the input filename.cl file.  The -c option will compile 
+             the source with gcc so you can link with your host application.
+             Host applicaton requires no API to use snack functions.
 
    Usage: snack.sh [ options ] filename.cl
 
    Options without values:
     -c        Compile generated source code to create .o file
     -ll       Tell cloc.sh to generate disassembled LLVM IR 
-    -g        Generate HSAIL debugger information 
     -version  Display version of snack then exit
     -v        Verbose messages
     -vv       Get additional verbose messages from cloc.sh
@@ -141,8 +143,8 @@ Software License Agreement.
                              <sdir> is directory where snack.sh is found
     -mcpu     <cpu>          Default=`'mymcpu`, Options: kaveri,carrizo,fiji
     -amdllvm  <path>         Default=/opt/amd/llvm or env var AMDLLVM 
-    -libgcn   <path>         Default=/opt/amd/libamdgcn or env var LIBGCN 
-    -opt      <LLVM opt>     Default=2, passed to cloc.sh to build HSAIL 
+    -libgcn   <path>         Default=/opt/rocm/libamdgcn or env var LIBGCN 
+    -opt      <LLVM opt>     Default=2, passed to cloc.sh to build code object
     -gccopt   <gcc opt>      Default=2, gcc optimization for snack wrapper
     -t        <tempdir>      Default=/tmp/snk_$$, Temp dir for files
     -s        <symbolname>   Default=filename 
@@ -170,10 +172,12 @@ Software License Agreement.
 ## Example 1: Hello World
 
 This version of cloc supports the SNACK method of writing accelerated 
-kernels in c. With SNACK, a host program can directly call the 
-accelerated function. 
+kernels in c. With SNACK, the host program can directly call the accelerated 
+function without an API such as OpenCL or CUDA.
+
 Here is the c++ source code HelloWorld.cpp using SNACK.
 ```cpp
+
 #include <string.h>
 #include <stdlib.h>
 #include <iostream>
@@ -189,6 +193,7 @@ int main(int argc, char* argv[]) {
 	cout << output << endl;
 	free_global(output);
 	return 0;
+
 }
 ```
 The c source for the accelerated kernel is in file hw.cl.
@@ -201,12 +206,12 @@ __kernel void decode(__global const char* in, __global char* out) {
 	out[num] = in[num] + 1;
 }
 ```
-The host program includes header file "hw.h" that does not exist yet.
+The host program includes the header file "hw.h".
 The -c option of snack.sh will call the gcc compiler and create 
 the object file and the header file.  Without -c you get the 
 generated c code hw.snackwrap.c and the header file.  The header file
-has function prototypes for all kernels declared in the .cl file.  Use 
-this command to compile the hw.cl file with snack.sh.
+has function prototypes for all kernels declared in the .cl file.  
+Use this command to compile the hw.cl file with snack.sh.
 
 ```
 /opt/amd/cloc/bin/snack.sh -c hw.cl
@@ -227,15 +232,15 @@ $ ./HelloWorld
 Hello HSA World
 ```
 
-This example and other examples can be found in the CLOC repository in the directory examples/snack.
+This example and other examples can be found in the cloc examples directory found in /opt/rocm/cloc/examples
 
 
 ## Example 2: Use of -hsaillib by cloc.sh and snackhsail.sh
 
 The snack.sh command creates and embeds HSA code object or isa.  To create and embed the HSAIL intermediate
-language you can use the snackhsail.sh command is an similar way. 
+language you can use the snackhsail.sh command in an similar way. 
 
-The snackhsail.sh command has an option to provide an HSAIL library.
+The snackhsail.sh command has an additional option to provide an HSAIL library.
 This options specifies a single file with the hsail for multiple functions that can be 
 called directly by cl.  One should have a corresponding header file for these functions.  
 An example to use the -hsaillib option is provided in the directory examples/snack/test_hsail_lib. 
@@ -256,8 +261,8 @@ __kernel void testkernel( __global float * outfval , __global const float  * fva
    outfval[i] =  __sin(fval[i]);
 }
 ```
-If you want to compile and build the example that uses snack, execute the buildrun.sh script found
-in the example directory.  It calls snack as follows. 
+If you want to compile and build the example, execute the buildrun.sh script found
+in the example directory.  It calls snackhsail.sh as follows:
 ```
 snackhsail.sh  -v -c  -hsaillib ../../mathdemo_hsaillib/mathdemo_hsaillib.hsail test_hsail_lib.cl
 ```
@@ -268,3 +273,29 @@ cloc.sh -hsail -hsaillib ../../mathdemo_hsaillib/mathdemo_hsaillib.hsail test_hs
 ```
 Your resulting hsail test_hsail_lib.hsail will include the hsaillib inserted into the correct
 position. The generated brig will also include the library. 
+
+## Example 3: Creating code object file with GCN isa and loading it with HSA API.
+
+In it's simplest form, cloc.sh compiles a .cl file into an HSA code object file.   
+This is a standard ELF file that can be loaded by the HSA API without the need for finalization.   
+However, the rest of the HSA API is required to launch this object code to the GPU.  
+An example is provided in the examples/hsa directory that shows the necessary HSA API
+to launch an HSA code object.  Use these commands to run this example:
+```
+cd $HOME
+cp -rp /opt/rocm/cloc/examples/hsa/vector_copy_codeobjects
+make
+make test
+```
+The Makefile will compile vector_copy_codeobject.cpp with these commands:
+```
+g++ -c -std=c++11 -I /opt/hsa/include -o obj/vector_copy_codeobject.o vector_copy_codeobject.cpp
+g++ obj/vector_copy_codeobject.o -L/opt/hsa/lib -lhsa-runtime64 -o vector_copy_codeobject
+```
+It will then call cloc.sh to create vectory_copy_codeobject.hsaco with this command. 
+```
+cloc.sh vector_copy_codeobject.cl
+```
+One could compare the difference between using code object without finalization and loading a brig 
+file with finalization by comparing this example to another example provided in 
+/opt/rocm/cloc/examples/vector_copy.
