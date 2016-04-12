@@ -177,23 +177,24 @@ function without an API such as OpenCL or CUDA.
 
 Here is the c++ source code HelloWorld.cpp using SNACK.
 ```cpp
-
 #include <string.h>
 #include <stdlib.h>
 #include <iostream>
 using namespace std;
 #include "hw.h"
 int main(int argc, char* argv[]) {
-	const char* input = "Gdkkn\x1FGR@\x1FVnqkc";
-	size_t strlength = strlen(input);
+	const char* input_const = "Gdkkn\x1FGR@\x1FVnqkc";
+	size_t strlength = strlen(input_const);
 	char *output = (char*) malloc_global(strlength + 1);
+	char *input = (char*) malloc_global(strlength + 1);
+        strncpy(input,input_const,strlength);
         SNK_INIT_LPARM(lparm,strlength);
         decode(input,output,lparm);
 	output[strlength] = '\0';
 	cout << output << endl;
 	free_global(output);
+	free_global(input);
 	return 0;
-
 }
 ```
 The c source for the accelerated kernel is in file hw.cl.
@@ -206,12 +207,12 @@ __kernel void decode(__global const char* in, __global char* out) {
 	out[num] = in[num] + 1;
 }
 ```
-The host program includes the header file "hw.h".
 The -c option of snack.sh will call the gcc compiler and create 
-the object file and the header file.  Without -c you get the 
-generated c code hw.snackwrap.c and the header file.  The header file
-has function prototypes for all kernels declared in the .cl file.  
-Use this command to compile the hw.cl file with snack.sh.
+the object file and the header file "hw.h" required to build 
+the host program. Without -c you get the generated c code hw.snackwrap.c 
+and the header file.  The header file has the function prototypes 
+for all kernels declared in the .cl file.  Use this command to 
+compile the hw.cl file with snack.sh.
 
 ```
 /opt/amd/cloc/bin/snack.sh -c hw.cl
@@ -283,7 +284,7 @@ An example is provided in the examples/hsa directory that shows the necessary HS
 to launch an HSA code object.  Use these commands to run this example:
 ```
 cd $HOME
-cp -rp /opt/rocm/cloc/examples/hsa/vector_copy_codeobjects
+cp -rp /opt/rocm/cloc/examples/hsa/vector_copy_codeobject
 make
 make test
 ```
