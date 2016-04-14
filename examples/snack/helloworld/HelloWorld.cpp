@@ -15,7 +15,6 @@ int main(int argc, char* argv[]) {
 	cout << output << endl;
 	free_global(input);
 	free_global(output);
-	free_global(input);
 	return 0;
 
 }
