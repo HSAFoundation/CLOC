@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.7
+PROGVERSION=1.0.8
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -73,8 +73,8 @@ function usage(){
     -path    <path>           $CLOC_PATH or <cdir> if CLOC_PATH not set
                               <cdir> is directory where cloc.sh is found
     -amdllvm <path>           $AMDLLVM or /opt/amd/llvm
-    -libgcn  <path>           $LIBGCN or /opt/amd/libamdgcn  
-    -hlcpath <path>           $HLC_PATH or /opt/amd/hlc3.2/bin  
+    -libgcn  <path>           $LIBGCN or /opt/rocm/libamdgcn  
+    -hlcpath <path>           $HLC_PATH or /opt/rocm/hlc3.2/bin  
     -mcpu    <cputype>        Default= value returned by ./mymcpu
     -clopts  <compiler opts>  Default=" "
     -I       <include dir>    Provide one directory per -I option
@@ -225,8 +225,8 @@ CLOC_PATH=${CLOC_PATH:-$cdir}
 
 # These are default locations of the lightning compiler, libamdgcn, and HLC
 AMDLLVM=${AMDLLVM:-/opt/amd/llvm}
-LIBGCN=${LIBGCN:-/opt/amd/libamdgcn}
-HLC_PATH=${HLC_PATH:-/opt/amd/hlc3.2/bin}
+LIBGCN=${LIBGCN:-/opt/rocm/libamdgcn}
+HLC_PATH=${HLC_PATH:-/opt/rocm/hlc3.2/bin}
 
 if [ ! $LC_MCPU ] ; then 
    LC_MCPU=`$CLOC_PATH/mymcpu`

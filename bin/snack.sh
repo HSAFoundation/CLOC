@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.7
+PROGVERSION=1.0.8
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -93,7 +93,7 @@ function usage(){
                              <sdir> is directory where snack.sh is found
     -mcpu     <cpu>          Default=`'mymcpu`, Options: kaveri,carrizo,fiji
     -amdllvm  <path>         Default=/opt/amd/llvm or env var AMDLLVM 
-    -libgcn   <path>         Default=/opt/amd/libamdgcn or env var LIBGCN 
+    -libgcn   <path>         Default=/opt/rocm/libamdgcn or env var LIBGCN 
     -opt      <LLVM opt>     Default=2, passed to cloc.sh to build code object
     -gccopt   <gcc opt>      Default=2, gcc optimization for snack wrapper
     -t        <tempdir>      Default=/tmp/snk_$$, Temp dir for files

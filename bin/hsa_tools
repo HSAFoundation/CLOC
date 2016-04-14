@@ -366,9 +366,9 @@ else
 fi
 
 clocsh_name="CLOC Compiler"
-fname="/opt/amd/cloc/bin/cloc.sh"
+fname="/opt/rocm/cloc/bin/cloc.sh"
 if [ -f $fname ] ; then
-   clocsh_ver=`/opt/amd/cloc/bin/cloc.sh  --version`
+   clocsh_ver=`/opt/rocm/cloc/bin/cloc.sh  --version`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    clocsh_date="$day "
    clocsh_loc=$fname
