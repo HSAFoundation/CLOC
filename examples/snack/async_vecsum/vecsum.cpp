@@ -1,7 +1,6 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
-#include <libelf.h>
 #include <iostream>
 #include <sys/param.h> 
 #include <time.h>

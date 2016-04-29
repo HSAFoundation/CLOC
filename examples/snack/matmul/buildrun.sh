@@ -3,7 +3,7 @@
 #   For this test case we need libbsd-dev for the random number generator
 #   sudo apt-get install libbsd-dev
 
-export LD_LIBRARY_PATH=/opt/hsa/lib
+export LD_LIBRARY_PATH=/opt/rocm/hsa/lib
 
 snkcmd=snack.sh # could also use snackhsail.sh
 
@@ -16,8 +16,8 @@ $snkcmd -v -c  matmulKernels.cl
 # Compile Main .c  and link to accelerated functions in matmulKernels.o
 echo 
 if [ -f matmul ] ; then rm matmul ; fi
-echo "gcc -O3 -o matmul matmulKernels.o matmul.c -L/opt/hsa/lib -lhsa-runtime64 -lelf -lbsd"
-gcc -O3 -o matmul matmulKernels.o matmul.c -L/opt/hsa/lib -lhsa-runtime64 -lelf -lbsd
+echo "gcc -O3 -o matmul matmulKernels.o matmul.c -L/opt/rocm/hsa/lib -lhsa-runtime64 -lbsd"
+gcc -O3 -o matmul matmulKernels.o matmul.c -L/opt/rocm/hsa/lib -lhsa-runtime64 -lbsd
 
 #  Execute the application
 echo 

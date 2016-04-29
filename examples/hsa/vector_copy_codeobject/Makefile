@@ -1,5 +1,5 @@
 ifndef HSA_RUNTIME_PATH
-	HSA_RUNTIME_PATH=/opt/hsa
+	HSA_RUNTIME_PATH=/opt/rocm/hsa
 endif
 
 TEST_NAME=vector_copy_codeobject

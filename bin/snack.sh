@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.8
+PROGVERSION=1.0.10
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -246,7 +246,7 @@ CLOC_PATH=${CLOC_PATH:-$sdir}
 #  Set Default values
 GCCOPT=${GCCOPT:-3}
 LLVMOPT=${LLVMOPT:-2}
-HSA_RT=${HSA_RT:-/opt/hsa}
+HSA_RT=${HSA_RT:-/opt/rocm/hsa}
 
 FORTRAN=${FORTRAN:-0};
 NOGLOBFUNS=${NOGLOBFUNS:-0};

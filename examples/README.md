@@ -1,7 +1,4 @@
 ```
-Make sure to have the compiler and cloc.sh installed in /opt/rocm/cloc/bin and 
-the HSA runtime in /opt/hsa as per the instructions in INSTALL.md. 
-
 #  Make a copy of the examples in your home directory 
 cp -r /opt/rocm/cloc/examples ~/examples
 

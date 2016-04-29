@@ -22,7 +22,7 @@ LIBAMDGCN = .
 #  This is where libamdgcn.$MCPU.bc files will be created with "make install"
 INSTALLDIR = /opt/rocm/libamdgcn
 
-#  These subdirectories are the only ones modified by this build. 
+#  These subdirectories are the only ones modified by "make"
 OUTDIR = ./_OUT
 BCDIR = $(OUTDIR)/_BC
 UTILDIR = $(OUTDIR)/_UTILS

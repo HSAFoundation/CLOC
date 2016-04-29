@@ -1,5 +1,5 @@
-CLOC - V 1.0.8 
-==============
+CLOC - V 1.0.10 
+===============
 
 CLOC:  CL Offline Compiler
        Generate HSA code object from a cl (Kernel c Language) file.
@@ -85,10 +85,7 @@ Software License Agreement.
     -path    <path>           $CLOC_PATH or <cdir> if CLOC_PATH not set
                               <cdir> is directory where cloc.sh is found
     -amdllvm <path>           $AMDLLVM or /opt/amd/llvm
-    -std=c++11 -I /opt/hsa/include -o obj/vector_copy_codeobject.o vector_copy_codeobject.cpp
-g++  obj/vector_copy_codeobject.o -L/opt/hsa/lib -lhsa-runtime64 -o vector_copy_codeobject
-cloc.sh vector_copy_codeobject.cl
-libgcn  <path>           $LIBGCN or /opt/rocm/libamdgcn  
+    -libgcn  <path>           $LIBGCN or /opt/rocm/libamdgcn  
     -hlcpath <path>           $HLC_PATH or /opt/rocm/hlc3.2/bin  
     -mcpu    <cputype>        Default= value returned by ./mymcpu
     -clopts  <compiler opts>  Default=" "
@@ -290,8 +287,8 @@ make test
 ```
 The Makefile will compile vector_copy_codeobject.cpp with these commands:
 ```
-g++ -c -std=c++11 -I /opt/hsa/include -o obj/vector_copy_codeobject.o vector_copy_codeobject.cpp
-g++ obj/vector_copy_codeobject.o -L/opt/hsa/lib -lhsa-runtime64 -o vector_copy_codeobject
+g++ -c -std=c++11 -I/opt/rocm/hsa/include -o obj/vector_copy_codeobject.o vector_copy_codeobject.cpp
+g++ obj/vector_copy_codeobject.o -L/opt/rocm/hsa/lib -lhsa-runtime64 -o vector_copy_codeobject
 ```
 It will then call cloc.sh to create vectory_copy_codeobject.hsaco with this command. 
 ```

@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.8
+PROGVERSION=1.0.10
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -75,7 +75,7 @@ function usage(){
     -amdllvm <path>           $AMDLLVM or /opt/amd/llvm
     -libgcn  <path>           $LIBGCN or /opt/rocm/libamdgcn  
     -hlcpath <path>           $HLC_PATH or /opt/rocm/hlc3.2/bin  
-    -mcpu    <cputype>        Default= value returned by ./mymcpu
+    -mcpu    <cputype>        Default= value returned by mymcpu
     -clopts  <compiler opts>  Default=" "
     -I       <include dir>    Provide one directory per -I option
     -lkopts  <LLVM link opts> Default=$LIBGCN/lib/libamdgcn.$mcpu.bc
@@ -229,13 +229,12 @@ LIBGCN=${LIBGCN:-/opt/rocm/libamdgcn}
 HLC_PATH=${HLC_PATH:-/opt/rocm/hlc3.2/bin}
 
 if [ ! $LC_MCPU ] ; then 
-   LC_MCPU=`$CLOC_PATH/mymcpu`
+   LC_MCPU=`mymcpu`
 fi
 
 LLVMOPT=${LLVMOPT:-3}
 
 if [ $VV ]  ; then 
-   CLOPTS="-v $CLOPTS"
    VERBOSE=true
 fi
 
@@ -346,6 +345,10 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
    # No HSAIL or Brig.  This is the new code object path
    # Use the Lightning Compiler to generate HSA code object
 
+   if [ $VV ]  ; then 
+      CLOPTS="-v $CLOPTS"
+   fi
+
    if [ $NOQP ] || [ $GENLL ] ; then 
       quickpath="false"
    else
@@ -430,6 +433,11 @@ else
    [ $VERBOSE ] && echo "#Step:  Optimize(opt)	lnkd.bc --> opt.bc -O$LLVMOPT ..."
    runcmd "$HLC_PATH/$CMD_HLC_OPT -o $TMPDIR/$FNAME.opt.bc $TMPDIR/$FNAME.lnkd.bc"
 
+   if [ $GENLL ] ; then
+     [ $VERBOSE ] && echo "#Step:  Disassemble	opt.bc --> opt.ll ..."
+     runcmd "$HLC_PATH/$CMD_LLA -o $OUTDIR/$FNAME.ll $TMPDIR/$FNAME.bc"
+   fi
+
    [ $VERBOSE ] && echo "#Step:  llc arch=hsail	opt.bc --> hsail ..."
    runcmd "$HLC_PATH/$CMD_HLC_LLC -o $TMPDIR/$FNAME.hsail $TMPDIR/$FNAME.opt.bc"
 
@@ -475,11 +483,11 @@ else
    fi
 
    [ $VERBOSE ] && echo "#Step:  HSAILasm	hsail --> $OUTFILE -O$LLVMOPT ..."   
-   runcmd "$HLC_PATH/$CMD_HLC_BRI -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.hsail"
+   runcmd "/opt/rocm/hcc-hsail/HSAILasm/$CMD_HLC_BRI -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.hsail"
 
    if [ $GEN_IL ] ; then 
       [ $VERBOSE ] && echo "#Step:  HSAILasm   	brig --> $FNAME.hsail ..."
-      runcmd "$HLC_PATH/$CMD_HLC_ASM -o $OUTDIR/$FNAME.hsail $OUTDIR/$OUTFILE"
+      runcmd "/opt/rocm/hcc-hsail/HSAILasm/$CMD_HLC_ASM -o $OUTDIR/$FNAME.hsail $OUTDIR/$OUTFILE"
    fi
 
 fi

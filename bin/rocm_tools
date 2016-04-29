@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-#  hsa_tools:  Check status of HSA tools on current system. 
+#  rocm_tools:  Check status of ROCM tools on current system. 
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
 #  TODO: Add Python, boost,  Kokkos, HcBlas, HcSparse
 #  Please contact Greg if you want your HSA tool added to this list
 #
-PROGVERSION=0.1.6
+PROGVERSION=0.1.7
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -50,13 +50,13 @@ PROGVERSION=0.1.6
 function usage(){
 /bin/cat 2>&1 <<"EOF" 
 
-   hsa_tools: List available HSA tools, versions, reference dates, and location
+   rocm_tools: List available ROC tools, versions, reference dates, and location
 
-   Usage: hsa_tools [ options ] 
+   Usage: rocm_tools [ options ] 
 
    Options without values:
     -h            Print this help message
-    -v            Print version of hsa_tools
+    -v            Print version of rocm_tools
     -r            Add reference file location information
     -c            Include commercial tools
     -limited      Include limited access tools
@@ -119,11 +119,11 @@ LASTARG=$1
 shift
 [ ! $NOHEADERS ] && HEADERS=true
 
-hsatls_name="hsa_tools"
+hsatls_name="rocm_tools"
 hsatls_ver=$PROGVERSION
 cdir=$(getdname $0)
-[ ! -L "$cdir/hsa_tools" ] || cdir=$(getdname `readlink "$cdir/hsa_tools"`)
-hsatls_loc=$cdir/hsa_tools
+[ ! -L "$cdir/rocm_tools" ] || cdir=$(getdname `readlink "$cdir/rocm_tools"`)
+hsatls_loc=$cdir/rocm_tools
 day=`ls -l --time-style +%Y-%m-%d $hsatls_loc | cut -d" " -f6`
 hsatls_date="$day "
 
@@ -158,19 +158,19 @@ else
    amdkfd_date="  "
 fi
 
-hrt_dpkg_name=hsa-runtime
+hrt_dpkg_name=hsa-rocr-dev
 hsartm_name="HSA Runtime"
-dpkg-query -s  hsa-runtime 2>/dev/null >/dev/null
+dpkg-query -s hsa-rocr-dev 2>/dev/null >/dev/null
 rc=$?
 if [ $rc != 0 ] ; then 
-   hrt_dpkg_name=hsa-runtime-dev
-   dpkg-query -s  hsa-runtime-dev 2>/dev/null >/dev/null
+   hrt_dpkg_name=hsa-rocr-dev
+   dpkg-query -s  hsa-rocr-dev 2>/dev/null >/dev/null
    rc=$?
 fi
 if [ $rc == 0 ] ; then 
 #  Fixme - should be using hsainfo for this
    hsartm_ver=`dpkg-query -s  $hrt_dpkg_name | grep Version | cut -d" " -f2`
-   fname="/opt/hsa/lib/libhsa-runtime64.so"
+   fname="/opt/rocm/hsa/lib/libhsa-runtime64.so"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    hsartm_date="$day"
 #  Some hacks for special hsa-runtime releases. 
@@ -206,8 +206,8 @@ else
 fi
 fi
 
-llvmlc_name="Lightning Compiler"
-fname="/opt/amd/lc/bin/llc"
+llvmlc_name="AMD llvm"
+fname="/opt/amd/llvm/bin/llc"
 if [ -f $fname ] ; then
    llvmlc_ver=`$fname --version | grep version | cut -d" " -f5`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
@@ -218,10 +218,10 @@ else
    llvmlc_date="  "
 fi
 
-llvmbe_name="LLVM HSAIL HLC"
-fname="/usr/local/hsail-llvm/bin/llc"
+llvmbe_name="HSAIL HLC3.2"
+fname="/opt/rocm/hlc3.2/bin/llc"
 if [ -f $fname ] ; then
-   llvmbe_ver=`/usr/local/hsail-llvm/bin/llc --version | grep version | cut -d" " -f5`
+   llvmbe_ver=`$fname --version | grep version | cut -d" " -f5`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    llvmbe_date="$day "
    llvmbe_loc=$fname
@@ -231,9 +231,9 @@ else
 fi
 
 hsaila_name="HSAIL/Brig Assember"
-fname="/usr/local/hsail-llvm/bin/HSAILasm"
+fname="/opt/rocm/hcc-hsail/HSAILasm/HSAILasm"
 if [ -f $fname ] ; then
-   hsaila_ver=`/usr/local/hsail-llvm/bin/HSAILasm -version | grep Version | cut -d" " -f4`
+   hsaila_ver=`$fname -version | grep Version | cut -d" " -f4`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    hsaila_date="$day "
    hsaila_loc=$fname
@@ -263,12 +263,12 @@ else
    gccbas_date="  "
 fi
 
-gcchsa_name="GCC HSA Compiler"
-fname="/usr/local/hsagcc/bin/gcc"
+gcchsa_name="Experimental GCC6 HSA"
+fname="/opt/rocm/hsagcc/bin/gcc"
 if [ -f $fname ] ; then
-   gcchsa_ver=`/usr/local/hsagcc/bin/gcc --version | grep gcc | cut -d" " -f3`
-   gcchsa_date=`/usr/local/hsagcc/bin/gcc --version | grep gcc | cut -d" " -f4`
-   fname="/usr/local/hsagcc/bin/gcc"
+   gcchsa_ver=`/opt/rocm/hsagcc/bin/gcc --version | grep gcc | cut -d" " -f3`
+   gcchsa_date=`/opt/rocm/hsagcc/bin/gcc --version | grep gcc | cut -d" " -f4`
+   fname="/opt/rocm/hsagcc/bin/gcc"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    gcchsa_date="$day"
    gcchsa_loc=$fname
@@ -277,6 +277,7 @@ else
    gcchsa_date="  "
 fi
 
+if  [ $PRINTALL ] ; then 
 opencc_name="OpenUH OpenACC  "
 dirname="/usr/local/openuh"
 if [ -d $dirname ] ; then
@@ -287,11 +288,12 @@ else
    opencc_ver="MISSING"
    opencc_date="  "
 fi
+fi
 
-hcc_name="MCW hcc compiler"
-fname="/opt/hcc/bin/clang++"
+hcc_name="HCC compiler"
+fname="/opt/rocm/hcc/compiler/bin/clang++"
 if [ -f $fname ] ; then
-   hcc_ver=`/opt/hcc/bin/clang++ --version 2>&1  | grep HCC | cut -d" " -f9 | cut -d"-" -f1`
+   hcc_ver=`$fname  --version 2>&1  | grep HCC | cut -d" " -f9 | cut -d"-" -f1`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    hcc_date="$day"
    hcc_loc=$fname
@@ -329,7 +331,7 @@ fi
 fi
 
 profil_name="HSAIL Profiler"
-fname="/opt/amd/sprofile/bin/sprofile"
+fname="/opt/rocm/sprofile/bin/sprofile"
 if [ -f $fname ] ; then
    profil_ver=`$fname --version | cut -d" " -f9`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
@@ -340,6 +342,7 @@ else
    profil_date="  "
 fi
 
+if [ $COMMERCIAL ] || [ $PRINTALL ] ; then 
 codexl_name="AMD CodeXL "
 dpkg-query -s amdcodexl 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
@@ -352,9 +355,10 @@ else
    codexl_ver="MISSING"
    codexl_date="  "
 fi
+fi
 
 debugr_name="AMD HSAIL debugger"
-fname="/opt/amd/hsa-debugger/AMDHsailGdb/bin/x86_64/hsail-gdb"
+fname="/opt/rocm/hsa-debugger/AMDHsailGdb/bin/x86_64/hsail-gdb"
 if [ -f $fname ] ; then
    debugr_ver=`$fname --version 2>&1 | grep hsail-gdb | cut -d" " -f3`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
@@ -379,9 +383,9 @@ fi
 
 if [ $LIMITED ] || [ $PRINTALL ] ; then 
 atmitl_name="ATMI"
-fname="/opt/amd/atmi/bin/atmi_version"
+fname="/opt/rocm/atmi/bin/atmi_version"
 if [ -f $fname ] ; then
-   atmitl_ver=`/opt/amd/atmi/bin/atmi_version`
+   atmitl_ver=`/opt/rocm/atmi/bin/atmi_version`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    atmitl_date="$day "
    atmitl_loc=$fname
@@ -447,6 +451,7 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$clocsh_name" "$clocsh_ver" "$clocsh_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$atmitl_name" "$atmitl_ver" "$atmitl_date" "compiler" "$atmitl_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$gccbas_name" "$gccbas_ver" "$gccbas_date" "compiler" "$gccbas_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$gcchsa_name" "$gcchsa_ver" "$gcchsa_date" "compiler" "$gcchsa_loc"
+[ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencc_name" "$opencc_ver" "$opencc_date" "compiler" "$opencc_loc"
 [ $COMMERCIAL ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$codepl_name" "$codepl_ver" "$codepl_date" "compiler" "$codepl_loc"
@@ -457,6 +462,7 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencl_name" "$opencl_ver" "$opencl_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "utility" "$llvmbe_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsaila_name" "$hsaila_ver" "$hsaila_date" "utility" "$hsaila_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$profil_name" "$profil_ver" "$profil_date" "tool" "$profil_loc"
+[ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$codexl_name" "$codexl_ver" "$codexl_date" "tool" "$codexl_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$debugr_name" "$debugr_ver" "$debugr_date" "tool" "$debugr_loc"
 [ $LIMITED ] || [ $PRINTALL ] && \
@@ -477,6 +483,7 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$clocsh_name" "$clocsh_ver" "$clocsh_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$atmitl_name" "$atmitl_ver" "$atmitl_date" "compiler" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$gccbas_name" "$gccbas_ver" "$gccbas_date" "compiler" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$gcchsa_name" "$gcchsa_ver" "$gcchsa_date" "compiler" 
+[ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencc_name" "$opencc_ver" "$opencc_date" "compiler" 
 [ $COMMERCIAL ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$codepl_name" "$codepl_ver" "$codepl_date" "compiler" 
@@ -488,6 +495,7 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmlc_name" "$llvmlc_ver" "$llvmlc_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "compiler" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsaila_name" "$hsaila_ver" "$hsaila_date" "utility" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$profil_name" "$profil_ver" "$profil_date" "tool" 
+[ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$codexl_name" "$codexl_ver" "$codexl_date" "tool" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$debugr_name" "$debugr_ver" "$debugr_date" "tool" 
 [ $LIMITED ] || [ $PRINTALL ] && \

@@ -104,7 +104,7 @@ while [ $# -gt 0 ] ; do
    case "$1" in 
       -brig) 		GEN_BRIG=true;; 
       -decode) 		GEN_DECODE=true;; 
-      -hlcpath) 	HLC_PATH=$2;shift;;
+      -asmpath) 	ASM_PATH=$2;shift;;
       -h) 		usage ;; 
       -help) 		usage ;; 
       --help) 		usage ;; 
@@ -131,7 +131,7 @@ if [ ! -z $1 ]; then
    echo " " >&2
 fi
 
-HLC_PATH=${HLC_PATH:-/opt/amd/hlc3.2/bin}
+ASM_PATH=${ASM_PATH:-/opt/rocm/hcc-hsail/HSAILasm}
 
 infile=$LASTARG
 tmpfile=/tmp/printhsail$$
@@ -149,7 +149,7 @@ fi
 
 HSAIL_DISASSEMBLE=`which HSAILasm`
 if [ $? != 0 ] ; then 
-   HSAIL_DISASSEMBLE=$HLC_PATH/HSAILasm
+   HSAIL_DISASSEMBLE=$ASM_PATH/HSAILasm
 fi 
 
 if [ ! -f "$infile" ] ; then 

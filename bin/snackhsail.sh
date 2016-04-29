@@ -103,7 +103,7 @@ function usage(){
     -p        <path>         $HSA_LLVM_PATH or <sdir> if HSA_LLVM_PATH not set
                              <sdir> is actual directory of snack.sh 
     -hlcpath  <path>         Default=/opt/rocm/hlc3.2/bin
-    -rp       <HSA RT path>  Default=$HSA_RUNTIME_PATH or /opt/hsa
+    -rp       <HSA RT path>  Default=$HSA_RUNTIME_PATH or /opt/rocm/hsa
     -o        <outfilename>  Default=<filename>.<ft> 
     -foption  <fnlizer opts> Default=""  Finalizer options
     -hsaillib <hsail filename>  
@@ -227,7 +227,7 @@ HLC_PATH=${HLC_PATH:-/opt/rocm/hlc3.2/bin}
 #  Set Default values
 GCCOPT=${GCCOPT:-3}
 LLVMOPT=${LLVMOPT:-2}
-HSA_RUNTIME_PATH=${HSA_RUNTIME_PATH:-/opt/hsa}
+HSA_RUNTIME_PATH=${HSA_RUNTIME_PATH:-/opt/rocm/hsa}
 CMD_BRI=${CMD_BRI:-HSAILasm }
 
 FORTRAN=${FORTRAN:-0};
@@ -354,9 +354,8 @@ if [ ! -d $TMPDIR ] && [ ! $DRYRUN ] ; then
    echo "ERROR:  Directory $TMPDIR does not exist or could not be created"
    exit $DEADRC
 fi 
-if [ ! -e $HLC_PATH/HSAILasm ] ; then 
-   echo "ERROR:  Missing HSAILasm in $HLC_PATH"
-   echo "        Set env variable HLC_PATH or use -hlcpath option"
+if [ ! -e /opt/rocm/hcc-hsail/HSAILasm/HSAILasm ] ; then 
+   echo "ERROR:  Missing HSAILasm "
    exit $DEADRC
 fi 
 if [ ! -d $OUTDIR ] && [ ! $DRYRUN ]  ; then 
@@ -437,13 +436,13 @@ if [ $HSAIL_OPT_STEP2 ] ; then
    CWRAPFILE=$INDIR/$FNAME.snackwrap.c
    [ $VERBOSE ] && echo "#Step:  gcc		hsail --> brig  ..."
    if [ $DRYRUN ] ; then
-      echo "$HLC_PATH/$CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail"
+      echo "/opt/rocm/hcc-hsail/HSAILasm/$CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail"
    else
-      $HLC_PATH/$CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail
+      /opt/rocm/hcc-hsail/HSAILasm/$CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail
       rc=$?
       if [ $rc != 0 ] ; then 
          echo "ERROR:  The following command failed with return code $rc."
-         echo "        $HLC_PATH/$CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail"
+         echo "        /opt/rocm/hcc-hsail/HSAILasm/$CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail"
          do_err $rc
       fi
    fi
