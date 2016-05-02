@@ -60,6 +60,13 @@ Execute this command:
 ```
 sudo apt-get install amdcloc
 ```
+There is a nasty mistake in the packaging of amdcloc 1.0.10.   It was fixed in the git repository, but not in the amdcloc 1.0.10 package.  Assuming your cloc repository clone is in ~/git/cloc ,  please fix this problem with this command. 
+
+```
+sudo cp ~/git/cloc/bin/snack.sh /opt/rocm/cloc/bin/.
+```
+This comment will be removed in the next release of amdcloc 1.0.11. 
+
 
 ## Test if HSA is Active.
 
