@@ -274,26 +274,21 @@ position. The generated brig will also include the library.
 
 ## Example 3: Creating code object file with GCN isa and loading it with HSA API.
 
-In it's simplest form, cloc.sh compiles a .cl file into an HSA code object file.   
-This is a standard ELF file that can be loaded by the HSA API without the need for finalization.   
-However, the rest of the HSA API is required to launch this object code to the GPU.  
-An example is provided in the examples/hsa directory that shows the necessary HSA API
-to launch an HSA code object.  Use these commands to run this example:
+In it's simplest form, cloc.sh compiles a .cl file into an HSA code object file.   This is a standard ELF file that can be loaded by the HSA API without the need for finalization.   However, the rest of the HSA API is required to launch this object code to the GPU.  An example is provided in the examples/hsa directory that shows the necessary HSA API to launch an HSA code object.  Use these commands to run this example:
 ```
 cd $HOME
-cp -rp /opt/rocm/cloc/examples/hsa/vector_copy_codeobject
+cp -rp /opt/rocm/cloc/examples/hsa/vector_copy_codeobject /tmp
+cd /tmp/vector_copy_codeobject
 make
 make test
 ```
-The Makefile will compile vector_copy_codeobject.cpp with these commands:
+The make command will compile vector_copy_codeobject.cpp with these commands:
 ```
 g++ -c -std=c++11 -I/opt/rocm/hsa/include -o obj/vector_copy_codeobject.o vector_copy_codeobject.cpp
 g++ obj/vector_copy_codeobject.o -L/opt/rocm/hsa/lib -lhsa-runtime64 -o vector_copy_codeobject
 ```
-It will then call cloc.sh to create vectory_copy_codeobject.hsaco with this command. 
+It then calls cloc.sh to create the file vectory_copy_codeobject.hsaco with this command. 
 ```
 cloc.sh vector_copy_codeobject.cl
 ```
-One could compare the difference between using code object without finalization and loading a brig 
-file with finalization by comparing this example to another example provided in 
-/opt/rocm/cloc/examples/vector_copy.
+The program will load the HSA code object file and launch it with the HSA API.  One could compare the minor difference in the HSA API between loading a code object and loading brig by comparing the source code and Makefile from the above example to the vector_copy example found in /opt/rocm/cloc/examples/hsa/vector_copy.   In the vector_copy example, cloc.sh requires the -brig option and the API source code in vector_copy.c has the extra finalization step. 
