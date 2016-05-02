@@ -434,7 +434,7 @@ else
    echo "};" >> $FULLHSACO_HFILE
    echo "size_t _${SYMBOLNAME}_HSA_CodeObjMemSz = sizeof(_${SYMBOLNAME}_HSA_CodeObjMem);" >> $FULLHSACO_HFILE
    if [ ! $MCPU ] ; then
-      MCPU=`$CLOC_PATH/mymcpu`
+      MCPU=`mymcpu`
    fi
    echo "const char* _${SYMBOLNAME}_MCPU = \"$MCPU\";" >> $FULLHSACO_HFILE
 fi
