@@ -51,7 +51,7 @@ sudo reboot
 
 <A Name="Install">
 3. Install and Test CLOC 
----=====================
+========================
 
 ## Install the amdcloc Package
 
