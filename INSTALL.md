@@ -1,7 +1,7 @@
 Cloc Install Instructions
 ===============================
 
-Warning.  These instructions are for CLOC 1.0.10 (April 2016 Update) .
+These instructions are for CLOC 1.0.10 (April 2016 Update). CLOC now installs from the ROCM apt server.  Please remove old packages that you installed with dpkg -i before using the new apt server.   These include amdcloc, libamdgcn, amdllvm, amdllvmbin, hlc, libhsakmt, hsa-runtime-dev, and hcc.  Use the "dpkg -P" command to remove these packages. 
 
 This set of instructions can be used to install a comprehensive HSA software stack and the Cloc utility for Ubuntu.  In addition to Linux, you must have an HSA compatible system such as a Kaveri processor, a Carrizo processor, or a fiji card. There are four steps to this process:
 
@@ -42,7 +42,7 @@ mount the appropriate MLNX_OFED iso
 
 ## Install HSA Linux Kernel Drivers, HSA Runtime, and HCC
 
-Install rocm software packages and reboot system with these commands:
+Install rocm software packages and reboot your system with these commands:
 
 ```
 sudo apt-get install rocm
@@ -55,7 +55,7 @@ sudo reboot
 
 ## Install the amdcloc Package
 
-Execute this command 
+Execute this command:
 
 ```
 sudo apt-get install amdcloc
@@ -92,6 +92,7 @@ Test the snack and cloc examples as follows.
 cp -rp /opt/rocm/cloc/examples/snack/helloworld /tmp/.
 cd /tmp/helloworld
 ./buildrun.sh
+
 cp -rp /opt/rocm/cloc/examples/hsa/vector_copy_codeobject  /tmp/.
 cd /tmp/vector_copy_codeobject
 make
@@ -100,7 +101,7 @@ make test
 
 ## Install Development GCC6 OpenMP for HSA Compiler (OPTIONAL)
 
-GCC 6 is currently in development.  We build versions of the development compiler for testing the HSA plugin.   These can be downloaded and installed as follows. 
+The HSA plugin for GCC 6 is currently experimental.  We build versions of the development compiler for testing the HSA plugin.   These can be downloaded and installed as follows. 
 
 ```
 cd $HOME/git
@@ -109,6 +110,7 @@ sudo rsync -av --exclude .git $HOME/git/hsa-openmp-gcc-amd/usr/local/hsagccver  
 sudo rm -f /usr/local/hsagcc
 sudo rsync -av $HOME/git/hsa-openmp-gcc-amd/usr/local/hsagcc  /usr/local
 ```
+In the future, we will add add debian packages to the apt server for gcc6.
 
 <A Name="Infiniband">
 4. Optional Infiniband Install 
