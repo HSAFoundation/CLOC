@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.10
+PROGVERSION=1.0.11
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -70,8 +70,6 @@ function usage(){
     -hsail    Generate dissassembled hsail (soon to be deprecated)
 
    Options with values:
-    -path    <path>           $CLOC_PATH or <cdir> if CLOC_PATH not set
-                              <cdir> is directory where cloc.sh is found
     -amdllvm <path>           $AMDLLVM or /opt/amd/llvm
     -libgcn  <path>           $LIBGCN or /opt/rocm/libamdgcn  
     -hlcpath <path>           $HLC_PATH or /opt/rocm/hlc3.2/bin  
@@ -88,9 +86,9 @@ function usage(){
     cloc.sh my.cl             /* create my.hsaco                    */
 
    You may set these environment variables 
-   LLVMOPT, CLOC_PATH,HLC_PATH,AMDLLVM,LIBGCN,LC_MCPU, CLOPTS, or LKOPTS 
+   LLVMOPT, HLC_PATH,AMDLLVM,LIBGCN,LC_MCPU, CLOPTS, or LKOPTS 
    instead of providing these respective command line options 
-   -opt, -path, -hlcpath, -amdllvm, -libgcn, -mcpu,  -clopts, or -lkopts 
+   -opt, -hlcpath, -amdllvm, -libgcn, -mcpu,  -clopts, or -lkopts 
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.
@@ -181,7 +179,6 @@ while [ $# -gt 0 ] ; do
       -t) 		TMPDIR=$2; shift ;; 
       -hsaillib) 	HSAILLIB=$2; shift ;; 
       -mcpu)            LC_MCPU=$2; shift ;;
-      -path)            CLOC_PATH=$2; shift ;;
       -amdllvm)         AMDLLVM=$2; shift ;;
       -libgcn)          LIBGCN=$2; shift ;;
       -hlcpath)         HLC_PATH=$2; shift ;;
@@ -216,12 +213,8 @@ if [ ! -z $1 ]; then
    echo " "
 fi
 
-# All binaries are expected to be in the same directory as cloc.sh
-# unless CLOC_PATH is set, otherwise set CLOC_PATH to where cloc.sh is. 
 cdir=$(getdname $0)
 [ ! -L "$cdir/cloc.sh" ] || cdir=$(getdname `readlink "$cdir/cloc.sh"`)
-# If CLOC_PATH is set use it, else use cdir
-CLOC_PATH=${CLOC_PATH:-$cdir}
 
 # These are default locations of the lightning compiler, libamdgcn, and HLC
 AMDLLVM=${AMDLLVM:-/opt/amd/llvm}
@@ -230,6 +223,9 @@ HLC_PATH=${HLC_PATH:-/opt/rocm/hlc3.2/bin}
 
 if [ ! $LC_MCPU ] ; then 
    LC_MCPU=`mymcpu`
+   if [ "$LC_MCPU" == "" ] ; then 
+      LC_MCPU="fiji"
+   fi
 fi
 
 LLVMOPT=${LLVMOPT:-3}
@@ -242,7 +238,7 @@ QPOPTS="-Xclang -mlink-bitcode-file -Xclang $LIBGCN/lib/libamdgcn.$LC_MCPU.bc"
 INCLUDES="-I ${LIBGCN}/include ${INCLUDES}" 
 
 #  Define the subcomands
-CMD_CLC=${CMD_CLC:-clang $CLOPTS -std=CL2.0 $CLOPTS $INCLUDES -include clc/clc.h -Dcl_clang_storage_class_specifiers -Dcl_khr_fp64 -target amdgcn--amdhsa -mcpu=$LC_MCPU} 
+CMD_CLC=${CMD_CLC:-clang $CLOPTS $CLOPTS $INCLUDES -include clc/clc.h -Dcl_clang_storage_class_specifiers -Dcl_khr_fp64 -target amdgcn--amdhsa -mcpu=$LC_MCPU} 
 CMD_LLA=${CMD_LLA:-llvm-dis}
 CMD_LLL=${CMD_LLL:-llvm-link}
 CMD_OPT=${CMD_OPT:-opt -O$LLVMOPT -mcpu=$LC_MCPU -amdgpu-annotate-kernel-features}
@@ -332,7 +328,6 @@ if [ $VERBOSE ] ; then
    else
       echo "#Info:  Code object:	$OUTDIR/$OUTFILE"
    fi
-   echo "#Info:  CLOC path:	$CLOC_PATH"
    echo "#Info:  AMDLLVM:	$AMDLLVM"
    [ $KEEPTDIR ] &&  echo "#Info:  Temp dir:	$TMPDIR" 
    echo "#   "
@@ -483,11 +478,11 @@ else
    fi
 
    [ $VERBOSE ] && echo "#Step:  HSAILasm	hsail --> $OUTFILE -O$LLVMOPT ..."   
-   runcmd "/opt/rocm/hcc-hsail/HSAILasm/$CMD_HLC_BRI -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.hsail"
+   runcmd "$HLC_PATH/$CMD_HLC_BRI -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.hsail"
 
    if [ $GEN_IL ] ; then 
       [ $VERBOSE ] && echo "#Step:  HSAILasm   	brig --> $FNAME.hsail ..."
-      runcmd "/opt/rocm/hcc-hsail/HSAILasm/$CMD_HLC_ASM -o $OUTDIR/$FNAME.hsail $OUTDIR/$OUTFILE"
+      runcmd "$HLC_PATH/$CMD_HLC_ASM -o $OUTDIR/$FNAME.hsail $OUTDIR/$OUTFILE"
    fi
 
 fi

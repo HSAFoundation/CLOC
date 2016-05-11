@@ -1,7 +1,7 @@
 Cloc Install Instructions
 ===============================
 
-These instructions are for CLOC 1.0.10 (April 2016 Update). CLOC now installs from the ROCM apt server.  Please remove old packages that you installed with dpkg -i before using the new apt server.   These include amdcloc, libamdgcn, amdllvm, amdllvmbin, hlc, libhsakmt, hsa-runtime-dev, and hcc.  Use the "dpkg -P" command to remove these packages. 
+These instructions are for CLOC 1.0.11 (April 2016 Update). CLOC now installs from the ROCM apt server.  Please remove old packages that you installed with dpkg -i before using the new apt server.   These include amdcloc, libamdgcn, amdllvm, amdllvmbin, hlc, libhsakmt, hsa-runtime-dev, and hcc.  Use the "dpkg -P" command to remove these packages. 
 
 This set of instructions can be used to install a comprehensive HSA software stack and the Cloc utility for Ubuntu.  In addition to Linux, you must have an HSA compatible system such as a Kaveri processor, a Carrizo processor, or a fiji card. There are four steps to this process:
 
@@ -60,13 +60,6 @@ Execute this command:
 ```
 sudo apt-get install amdcloc
 ```
-There is a nasty mistake in the packaging of amdcloc 1.0.10.   It was fixed in the git repository, but not in the amdcloc 1.0.10 package.  Assuming your cloc repository clone is in ~/git/cloc ,  please fix this problem with this command. 
-
-```
-sudo cp ~/git/cloc/bin/snack.sh /opt/rocm/cloc/bin/.
-```
-This comment will be removed in the next release of amdcloc 1.0.11. 
-
 
 ## Test if HSA is Active.
 

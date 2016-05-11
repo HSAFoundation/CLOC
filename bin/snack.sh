@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.10
+PROGVERSION=1.0.11
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -435,6 +435,9 @@ else
    echo "size_t _${SYMBOLNAME}_HSA_CodeObjMemSz = sizeof(_${SYMBOLNAME}_HSA_CodeObjMem);" >> $FULLHSACO_HFILE
    if [ ! $MCPU ] ; then
       MCPU=`mymcpu`
+      if [ "$MCPU" == "" ] ; then 
+         MCPU="fiji"
+      fi
    fi
    echo "const char* _${SYMBOLNAME}_MCPU = \"$MCPU\";" >> $FULLHSACO_HFILE
 fi

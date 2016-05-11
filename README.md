@@ -1,4 +1,4 @@
-CLOC - V 1.0.10 
+CLOC - V 1.0.11 
 ===============
 
 CLOC:  CL Offline Compiler
@@ -82,8 +82,6 @@ Software License Agreement.
     -hsail    Generate dissassembled hsail (soon to be deprecated)
 
    Options with values:
-    -path    <path>           $CLOC_PATH or <cdir> if CLOC_PATH not set
-                              <cdir> is directory where cloc.sh is found
     -amdllvm <path>           $AMDLLVM or /opt/amd/llvm
     -libgcn  <path>           $LIBGCN or /opt/rocm/libamdgcn  
     -hlcpath <path>           $HLC_PATH or /opt/rocm/hlc3.2/bin  
@@ -100,9 +98,9 @@ Software License Agreement.
     cloc.sh my.cl             /* create my.hsaco                    */
 
    You may set these environment variables 
-   LLVMOPT, CLOC_PATH,HLC_PATH,AMDLLVM,LIBGCN,LC_MCPU, CLOPTS, or LKOPTS 
+   LLVMOPT, HLC_PATH,AMDLLVM,LIBGCN,LC_MCPU, CLOPTS, or LKOPTS 
    instead of providing these respective command line options 
-   -opt, -path, -hlcpath, -amdllvm, -libgcn, -mcpu,  -clopts, or -lkopts 
+   -opt, -hlcpath, -amdllvm, -libgcn, -mcpu,  -clopts, or -lkopts 
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.
