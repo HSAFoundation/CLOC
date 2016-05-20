@@ -66,7 +66,7 @@ function usage(){
     -n        Dryrun, do nothing, show commands that would execute
     -h        Print this help message
     -k        Keep temporary files
-    -brig     Generate brig  (soon to be depracated)
+    -brig     Generate brig  (soon to be deprecated)
     -hsail    Generate dissassembled hsail (soon to be deprecated)
 
    Options with values:
