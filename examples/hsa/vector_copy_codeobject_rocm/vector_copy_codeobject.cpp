@@ -232,20 +232,6 @@ int main() {
   device_region.handle=(uint64_t)-1;
   hsa_agent_iterate_regions(device, get_device_memory_region, &device_region);
 
-#if 0
-      // Setup kernel arguments.
-      uint32_t* in = (uint32_t*)calloc(GLOBAL_SIZE, sizeof(uint32_t));
-      uint32_t* out = (uint32_t*)calloc(GLOBAL_SIZE, sizeof(uint32_t));
-
-      for (uint32_t i = 0; i < GLOBAL_SIZE; ++i) {
-        in[i] = i;
-      }
-
-      hsa_status = hsa_memory_register(in, GLOBAL_SIZE * 4);
-      assert(HSA_STATUS_SUCCESS == hsa_status);
-      hsa_status = hsa_memory_register(out, GLOBAL_SIZE * 4);
-      assert(HSA_STATUS_SUCCESS == hsa_status);
-#endif
   // Setup kernel arguments.
   uint32_t* in = (uint32_t*)calloc(GLOBAL_SIZE, sizeof(uint32_t));
   uint32_t* out = (uint32_t*)calloc(GLOBAL_SIZE, sizeof(uint32_t));
@@ -266,14 +252,6 @@ int main() {
   
   hsa_status = hsa_memory_copy(in_d, in, sizeBytes);
   assert(HSA_STATUS_SUCCESS == hsa_status);
-
-#if 0
-  hsa_status = hsa_memory_register(in, GLOBAL_SIZE * 4);
-  assert(HSA_STATUS_SUCCESS == hsa_status);
-  hsa_status = hsa_memory_register(out, GLOBAL_SIZE * 4);
-  assert(HSA_STATUS_SUCCESS == hsa_status);
-#endif
-
 
 
   struct ALIGNED_(HSA_ARGUMENT_ALIGN_BYTES) args_t {
