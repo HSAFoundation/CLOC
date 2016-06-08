@@ -7,7 +7,7 @@
 #  TODO: Add Python, boost,  Kokkos, HcBlas, HcSparse
 #  Please contact Greg if you want your HSA tool added to this list
 #
-PROGVERSION=0.1.7
+PROGVERSION=1.0.12
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -119,7 +119,7 @@ LASTARG=$1
 shift
 [ ! $NOHEADERS ] && HEADERS=true
 
-hsatls_name="rocm_tools"
+hsatls_name="rocm_tools script"
 hsatls_ver=$PROGVERSION
 cdir=$(getdname $0)
 [ ! -L "$cdir/rocm_tools" ] || cdir=$(getdname `readlink "$cdir/rocm_tools"`)
@@ -207,9 +207,10 @@ fi
 fi
 
 llvmlc_name="AMD llvm"
-fname="/opt/amd/llvm/bin/llc"
-if [ -f $fname ] ; then
-   llvmlc_ver=`$fname --version | grep version | cut -d" " -f5`
+dpkg-query -s amdllvm 2>/dev/null >/dev/null
+if [ $? == 0 ] ; then 
+   fname="/opt/amd/llvm/bin/llc"
+   llvmlc_ver=`dpkg-query -s amdllvm | grep Version | cut -d" " -f2`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    llvmlc_date="$day "
    llvmlc_loc=$fname
@@ -218,10 +219,11 @@ else
    llvmlc_date="  "
 fi
 
-llvmbe_name="HSAIL HLC3.2"
-fname="/opt/rocm/hlc3.2/bin/llc"
-if [ -f $fname ] ; then
-   llvmbe_ver=`$fname --version | grep version | cut -d" " -f5`
+llvmbe_name="HIP"
+dpkg-query -s hip_base 2>/dev/null >/dev/null
+if [ $? == 0 ] ; then 
+   llvmbe_ver=`dpkg-query -s hip_base | grep Version | cut -d" " -f2`
+   fname="/opt/rocm/hip/bin/hipcc"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    llvmbe_date="$day "
    llvmbe_loc=$fname
@@ -263,12 +265,11 @@ else
    gccbas_date="  "
 fi
 
-gcchsa_name="Experimental GCC6 HSA"
-fname="/opt/rocm/hsagcc/bin/gcc"
-if [ -f $fname ] ; then
-   gcchsa_ver=`/opt/rocm/hsagcc/bin/gcc --version | grep gcc | cut -d" " -f3`
-   gcchsa_date=`/opt/rocm/hsagcc/bin/gcc --version | grep gcc | cut -d" " -f4`
-   fname="/opt/rocm/hsagcc/bin/gcc"
+gcchsa_name="Experimental GCC6 "
+dpkg-query -s rocmgcc6 2>/dev/null >/dev/null
+if [ $? == 0 ] ; then 
+   gcchsa_ver=`dpkg-query -s rocmgcc6 | grep Version | cut -d" " -f2`
+   fname="/opt/rocm/gcc6/bin/gcc"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    gcchsa_date="$day"
    gcchsa_loc=$fname
@@ -330,10 +331,11 @@ else
 fi
 fi
 
-profil_name="HSAIL Profiler"
-fname="/opt/rocm/sprofile/bin/sprofile"
-if [ -f $fname ] ; then
-   profil_ver=`$fname --version | cut -d" " -f9`
+profil_name="Sys mgmt (smi)"
+dpkg-query -s rocm-smi 2>/dev/null >/dev/null
+if [ $? == 0 ] ; then 
+   profil_ver=`dpkg-query -s rocm-smi | grep Version | cut -d" " -f2`
+   fname="/opt/rocm/bin/rocm-smi"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    profil_date="$day"
    profil_loc=$fname
@@ -357,10 +359,11 @@ else
 fi
 fi
 
-debugr_name="AMD HSAIL debugger"
-fname="/opt/rocm/hsa-debugger/AMDHsailGdb/bin/x86_64/hsail-gdb"
-if [ -f $fname ] ; then
-   debugr_ver=`$fname --version 2>&1 | grep hsail-gdb | cut -d" " -f3`
+debugr_name="ROCm debugger"
+dpkg-query -s rocm-gdb 2>/dev/null >/dev/null
+if [ $? == 0 ] ; then 
+   debugr_ver=`dpkg-query -s rocm-gdb | grep Version | cut -d" " -f2`
+   fname="/opt/rocm/gdb/bin/x86_64/amd-gdb"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    debugr_date="$day "
    debugr_loc=$fname

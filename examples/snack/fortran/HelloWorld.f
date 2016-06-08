@@ -9,9 +9,15 @@ C     cloc -c -fort  will generate launch_params.f so you can set dimensions
       pointer(o_ptr,output)
       pointer(i_ptr,inputg)
 C     Malloc memory to use in GPU functions
+#ifdef GLOBALMALLOC
       s_ptr = malloc_global(64)
       o_ptr = malloc_global(64)
       i_ptr = malloc_global(64)
+#else
+      s_ptr = malloc(64)
+      o_ptr = malloc(64)
+      i_ptr = malloc(64)
+#endif
      
       lmsg=LEN(msg)
       DO i=1,lmsg

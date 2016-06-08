@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.11
+PROGVERSION=1.0.12
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -58,7 +58,8 @@ function usage(){
    Usage: cloc.sh [ options ] filename.cl
 
    Options without values:
-    -ll       Generate dissassembled LLVM IR, for info only
+    -ll       Generate IR for LLVM steps before generating hsaco
+    -s        Generate dissassembled gcn from hsaco
     -g        Generate debug information
     -noqp     No quickpath, Use LLVM IR commands
     -version  Display version of cloc then exit
@@ -170,6 +171,7 @@ while [ $# -gt 0 ] ; do
       -brig) 		GEN_BRIG=true;; 
       -g) 		GEN_DEBUG=true;; 
       -ll) 		GENLL=true;;
+      -s) 		GENASM=true;;
       -noqp) 		NOQP=true;;
       -clopts) 		CLOPTS=$2; shift ;; 
       -I) 		INCLUDES="$INCLUDES -I $2"; shift ;; 
@@ -243,7 +245,6 @@ CMD_LLA=${CMD_LLA:-llvm-dis}
 CMD_LLL=${CMD_LLL:-llvm-link}
 CMD_OPT=${CMD_OPT:-opt -O$LLVMOPT -mcpu=$LC_MCPU -amdgpu-annotate-kernel-features}
 CMD_LLC=${CMD_LLC:-llc -mtriple amdgcn--amdhsa -mcpu=$LC_MCPU -filetype=obj}
-CMD_HDR=${CMD_HDR:-amdphdrs}
 
 RUNDATE=`date`
 
@@ -284,9 +285,6 @@ else
 #  Use the specified OUTFILE
    OUTDIR=$(getdname $OUTFILE)
    OUTFILE=${OUTFILE##*/}
-   if [ ${OUTFILE##*.} == "h" ] ; then 
-      OUTFILE="${OUTFILE%.*}.brig"
-   fi
 fi 
 
 TMPNAME="cloc-tmp-$$"
@@ -338,7 +336,7 @@ rc=0
 if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then 
 
    # No HSAIL or Brig.  This is the new code object path
-   # Use the Lightning Compiler to generate HSA code object
+   # Use the Lightning Compiler in /opt/amd/llvm  to generate HSA code object
 
    if [ $VV ]  ; then 
       CLOPTS="-v $CLOPTS"
@@ -351,17 +349,19 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
    fi
 
    if [ "$quickpath" == "true" ] ; then 
+
       [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> hsaco ..."
       runcmd "$AMDLLVM/bin/$CMD_CLC $QPOPTS -o $OUTDIR/$FNAME.hsaco $INDIR/$CLNAME"
+
    else 
-      # Run 5 steps, clang,link,opt,llc,amdphdrs
+      # Run 4 steps, clang,link,opt,llc
       [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> bc ..."
       runcmd "$AMDLLVM/bin/$CMD_CLC -c -emit-llvm -o $TMPDIR/$FNAME.bc $INDIR/$CLNAME"
 
       if [ $GENLL ] ; then
          [ $VERBOSE ] && echo "#Step:  Disassemble	bc --> ll ..."
          runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.ll $TMPDIR/$FNAME.bc"
-         if [ ! $KEEPTDIR ] ; then 
+         if [ "$OUTDIR" != "$TMPDIR" ] ; then
             runcmd "cp $TMPDIR/$FNAME.ll $OUTDIR/$FNAME.ll"
          fi
       fi
@@ -372,7 +372,7 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
       if [ $GENLL ] ; then
          [ $VERBOSE ] && echo "#Step:  Disassemble	lnkd.bc --> lnkd.ll ..."
          runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.lnkd.ll $TMPDIR/$FNAME.lnkd.bc"
-         if [ ! $KEEPTDIR ] ; then 
+         if [ "$OUTDIR" != "$TMPDIR" ] ; then
             runcmd "cp $TMPDIR/$FNAME.lnkd.ll $OUTDIR/$FNAME.lnkd.ll"
          fi
       fi 
@@ -384,7 +384,7 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
          if [ $GENLL ] ; then
             [ $VERBOSE ] && echo "#Step:  Disassemble	opt.bc --> opt.ll ..."
             runcmd "$AMDLLVM/bin/$CMD_LLA -o $TMPDIR/$FNAME.opt.ll $TMPDIR/$FNAME.opt.bc"
-            if [ ! $KEEPTDIR ] ; then 
+            if [ "$OUTDIR" != "$TMPDIR" ] ; then
                runcmd "cp $TMPDIR/$FNAME.opt.ll $OUTDIR/$FNAME.opt.ll"
             fi 
          fi 
@@ -394,13 +394,22 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
          LLC_BC="lnkd"
       fi 
 
-      [ $VERBOSE ] && echo "#Step:  llc mcpu=$LC_MCPU	$LLC_BC.bc --> gcn ..."
-      runcmd "$AMDLLVM/bin/$CMD_LLC -o $TMPDIR/$FNAME.gcn $TMPDIR/$FNAME.$LLC_BC.bc"
+      [ $VERBOSE ] && echo "#Step:  llc mcpu=$LC_MCPU	$LLC_BC.bc --> hsaco ..."
+      runcmd "$AMDLLVM/bin/$CMD_LLC -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.$LLC_BC.bc"
  
-      [ $VERBOSE ] && echo "#Step:  amdphdrs 	gcn --> hsaco ..."
-      runcmd "$AMDLLVM/bin/$CMD_HDR $TMPDIR/$FNAME.gcn $OUTDIR/$OUTFILE "
 
    fi # end of if quickpath then ... else  ...
+
+   if [ $GENASM ] ; then
+      [ $VERBOSE ] && echo "#Step:  llvm-objdump 	hsaco --> $FNAME.s ..."
+      textstarthex=`readelf -S -W  $OUTDIR/$OUTFILE | grep .text | awk '{print $6}'`
+      textstart=$((0x$textstarthex))
+      textszhex=`readelf -S -W $OUTDIR/$OUTFILE | grep .text | awk '{print $7}'`
+      textsz=$((0x$textszhex))
+      countclause=" count=$textsz skip=$textstart"
+      dd if=$OUTDIR/$OUTFILE of=$OUTDIR/$FNAME.raw bs=1 $countclause 2>/dev/null
+      hexdump -v -e '/1 "0x%02X "' $OUTDIR/$FNAME.raw | $AMDLLVM/bin/llvm-mc -arch=amdgcn -mcpu=$LC_MCPU -disassemble >$OUTDIR/$FNAME.s 2>$OUTDIR/$FNAME.s.err
+   fi
 
 else 
 
@@ -430,7 +439,10 @@ else
 
    if [ $GENLL ] ; then
      [ $VERBOSE ] && echo "#Step:  Disassemble	opt.bc --> opt.ll ..."
-     runcmd "$HLC_PATH/$CMD_LLA -o $OUTDIR/$FNAME.ll $TMPDIR/$FNAME.bc"
+     runcmd "$HLC_PATH/$CMD_LLA -o $TMPDIR/$FNAME.ll $TMPDIR/$FNAME.bc"
+     if [ "$OUTDIR" != "$TMPDIR" ] ; then
+        runcmd "cp $TMPDIR/$FNAME.opt.ll $OUTDIR/$FNAME.opt.ll"
+     fi
    fi
 
    [ $VERBOSE ] && echo "#Step:  llc arch=hsail	opt.bc --> hsail ..."
