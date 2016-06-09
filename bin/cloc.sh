@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.12
+PROGVERSION=1.0.13
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -236,11 +236,11 @@ if [ $VV ]  ; then
    VERBOSE=true
 fi
 
-QPOPTS="-Xclang -mlink-bitcode-file -Xclang $LIBGCN/lib/libamdgcn.$LC_MCPU.bc"
+LINKOPTS="-Xclang -mlink-bitcode-file -Xclang $LIBGCN/lib/libamdgcn.$LC_MCPU.bc"
 INCLUDES="-I ${LIBGCN}/include ${INCLUDES}" 
 
 #  Define the subcomands
-CMD_CLC=${CMD_CLC:-clang $CLOPTS $CLOPTS $INCLUDES -include clc/clc.h -Dcl_clang_storage_class_specifiers -Dcl_khr_fp64 -target amdgcn--amdhsa -mcpu=$LC_MCPU} 
+CMD_CLC=${CMD_CLC:-clang $CLOPTS $LINKOPTS $INCLUDES -include clc/clc.h -Dcl_clang_storage_class_specifiers -Dcl_khr_fp64 -target amdgcn--amdhsa -mcpu=$LC_MCPU} 
 CMD_LLA=${CMD_LLA:-llvm-dis}
 CMD_LLL=${CMD_LLL:-llvm-link}
 CMD_OPT=${CMD_OPT:-opt -O$LLVMOPT -mcpu=$LC_MCPU -amdgpu-annotate-kernel-features}
@@ -351,7 +351,7 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
    if [ "$quickpath" == "true" ] ; then 
 
       [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> hsaco ..."
-      runcmd "$AMDLLVM/bin/$CMD_CLC $QPOPTS -o $OUTDIR/$FNAME.hsaco $INDIR/$CLNAME"
+      runcmd "$AMDLLVM/bin/$CMD_CLC -o $OUTDIR/$FNAME.hsaco $INDIR/$CLNAME"
 
    else 
       # Run 4 steps, clang,link,opt,llc
@@ -367,7 +367,7 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
       fi
 
       [ $VERBOSE ] && echo "#Step:  Link(llvm-link)	bc --> lnkd.bc ..."
-      runcmd "$AMDLLVM/bin/$CMD_LLL $TMPDIR/$FNAME.bc $LIBGCN/lib/libamdgcn.$LC_MCPU.bc -o $TMPDIR/$FNAME.lnkd.bc" 
+      runcmd "$AMDLLVM/bin/$CMD_LLL $TMPDIR/$FNAME.bc -o $TMPDIR/$FNAME.lnkd.bc" 
 
       if [ $GENLL ] ; then
          [ $VERBOSE ] && echo "#Step:  Disassemble	lnkd.bc --> lnkd.ll ..."
@@ -394,14 +394,17 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
          LLC_BC="lnkd"
       fi 
 
-      [ $VERBOSE ] && echo "#Step:  llc mcpu=$LC_MCPU	$LLC_BC.bc --> hsaco ..."
-      runcmd "$AMDLLVM/bin/$CMD_LLC -o $OUTDIR/$OUTFILE $TMPDIR/$FNAME.$LLC_BC.bc"
+      [ $VERBOSE ] && echo "#Step:  llc mcpu=$LC_MCPU	$LLC_BC.bc --> amdgcn ..."
+      runcmd "$AMDLLVM/bin/$CMD_LLC -o $TMPDIR/$FNAME.gcn $TMPDIR/$FNAME.$LLC_BC.bc"
+
+      [ $VERBOSE ] && echo "#Step:	ld.lld		gcn --> hsaco ..."
+      runcmd "$AMDLLVM/bin/ld.lld $TMPDIR/$FNAME.gcn -shared -o $OUTDIR/$OUTFILE"
  
 
    fi # end of if quickpath then ... else  ...
 
    if [ $GENASM ] ; then
-      [ $VERBOSE ] && echo "#Step:  llvm-objdump 	hsaco --> $FNAME.s ..."
+      [ $VERBOSE ] && echo "#Step:  llvm-objdump 	hsaco --> .s ..."
       textstarthex=`readelf -S -W  $OUTDIR/$OUTFILE | grep .text | awk '{print $6}'`
       textstart=$((0x$textstarthex))
       textszhex=`readelf -S -W $OUTDIR/$OUTFILE | grep .text | awk '{print $7}'`

@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.12
+PROGVERSION=1.0.13
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -75,7 +75,8 @@ function usage(){
 
    Options without values:
     -c        Compile generated source code to create .o file
-    -ll       Tell cloc.sh to generate disassembled LLVM IR 
+    -ll       Tell cloc.sh to generate IR for LLVM steps
+    -s        Generate gsn assembly from llc output
     -version  Display version of snack then exit
     -v        Verbose messages
     -vv       Get additional verbose messages from cloc.sh
@@ -189,6 +190,7 @@ while [ $# -gt 0 ] ; do
       -noglobs)  	NOGLOBFUNS=1;;  
       -kstats)  	KSTATS=1;;  
       -ll) 		GENLL=true;; 
+      -s) 		GENASM=true;; 
       -opt) 		LLVMOPT=$2; shift ;; 
       -gccopt) 		GCCOPT=$2; shift ;; 
       -foption) 	FOPTION=$2; shift ;; 
@@ -326,6 +328,9 @@ fi
 if [ $GENLL ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -ll"
 fi
+if [ $GENASM ] ; then
+   OTHERCLOCFLAGS="$OTHERCLOCFLAGS -s"
+fi
 if [ $AMDLLVM ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -amdllvm $AMDLLVM"
 fi
@@ -421,6 +426,15 @@ fi
 [ $CLOCVERBOSE ] && echo " " && echo "#------ Start cloc.sh output ------"
 runcmd "$CLOC_PATH/cloc.sh -t $TMPDIR -k -clopts "-I$INDIR" $OTHERCLOCFLAGS $TMPDIR/updated.cl"
 [ $CLOCVERBOSE ] && echo "#------ End cloc.sh output ------" && echo " " 
+
+if [ $GENLL ] ; then
+   cp -p $TMPDIR/updated.ll $OUTDIR/$FNAME.ll
+   cp -p $TMPDIR/updated.lnkd.ll $OUTDIR/$FNAME.lnkd.ll
+   cp -p $TMPDIR/updated.opt.ll $OUTDIR/$FNAME.opt.ll
+fi
+if [ $GENASM ] ; then
+   if [ -f $TMPDIR/updated.s ] ; then cp -p $TMPDIR/updated.s $OUTDIR/$FNAME.s ; fi
+fi
 
 [ $VERBOSE ] && echo "#Step:  hexdump		hsaco --> $HSACO_HFILE ..."
 if [ $DRYRUN ] ; then 

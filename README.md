@@ -1,4 +1,4 @@
-CLOC - V 1.0.11 
+CLOC - V 1.0.13 
 ===============
 
 CLOC:  CL Offline Compiler
@@ -70,7 +70,8 @@ Software License Agreement.
    Usage: cloc.sh [ options ] filename.cl
 
    Options without values:
-    -ll       Generate dissassembled LLVM IR, for info only
+    -ll       Generate IR for LLVM steps before generating hsaco
+    -s        Generate dissassembled gcn from hsaco
     -g        Generate debug information
     -noqp     No quickpath, Use LLVM IR commands
     -version  Display version of cloc then exit
@@ -85,7 +86,7 @@ Software License Agreement.
     -amdllvm <path>           $AMDLLVM or /opt/amd/llvm
     -libgcn  <path>           $LIBGCN or /opt/rocm/libamdgcn  
     -hlcpath <path>           $HLC_PATH or /opt/rocm/hlc3.2/bin  
-    -mcpu    <cputype>        Default= value returned by ./mymcpu
+    -mcpu    <cputype>        Default= value returned by mymcpu
     -clopts  <compiler opts>  Default=" "
     -I       <include dir>    Provide one directory per -I option
     -lkopts  <LLVM link opts> Default=$LIBGCN/lib/libamdgcn.$mcpu.bc
@@ -104,23 +105,25 @@ Software License Agreement.
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.
+
 ```
 
 
 ## The snack.sh Command 
 
 ```
-   snack.sh: Generate host-callable "snack" functions for GPU kernels.
-             Snack generates the source code and headers for each kernel 
-             in the input filename.cl file.  The -c option will compile 
-             the source with gcc so you can link with your host application.
-             Host applicaton requires no API to use snack functions.
+   snack: Generate host-callable "snack" functions for GPU kernels.
+          Snack generates the source code and headers for each kernel 
+          in the input filename.cl file.  The -c option will compile 
+          the source with gcc so you can link with your host application.
+          Host applicaton requires no API to use snack functions.
 
    Usage: snack.sh [ options ] filename.cl
 
    Options without values:
     -c        Compile generated source code to create .o file
-    -ll       Tell cloc.sh to generate disassembled LLVM IR 
+    -ll       Tell cloc.sh to generate IR for LLVM steps
+    -s        Generate gsn assembly from llc output
     -version  Display version of snack then exit
     -v        Verbose messages
     -vv       Get additional verbose messages from cloc.sh

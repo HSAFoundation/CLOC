@@ -1,7 +1,7 @@
 Cloc Install Instructions
 ===============================
 
-These instructions are for CLOC 1.0.11 (April 2016 Update). CLOC now installs from the ROCM apt server.  Please remove old packages that you installed with dpkg -i before using the new apt server.   These include amdcloc, libamdgcn, amdllvm, amdllvmbin, hlc, libhsakmt, hsa-runtime-dev, and hcc.  Use the "dpkg -P" command to remove these packages. 
+These instructions are for CLOC 1.0.13 (June 2016 Update). CLOC now installs from the ROCM apt server.  Please remove old packages that you installed with dpkg -i before using the new apt server.   These include amdcloc, libamdgcn, amdllvm, amdllvmbin, hlc, libhsakmt, hsa-runtime-dev, and hcc.  Use the "dpkg -P" command to remove these packages. 
 
 This set of instructions can be used to install a comprehensive HSA software stack and the Cloc utility for Ubuntu.  In addition to Linux, you must have an HSA compatible system such as a Kaveri processor, a Carrizo processor, or a fiji card. There are four steps to this process:
 
@@ -101,16 +101,13 @@ make test
 
 ## Install Development GCC6 OpenMP for HSA Compiler (OPTIONAL)
 
-The HSA plugin for GCC 6 is currently experimental.  We build versions of the development compiler for testing the HSA plugin.   These can be downloaded and installed as follows. 
+The HSA plugin for GCC 6 is currently experimental. It does not yet support discrete GPU cards such as fiji.  We build versions of the development compiler for testing the GCC plugin for HSA.   The latest version can be downloaded and installed as follows. 
 
 ```
 cd $HOME/git
 git clone -b master https://github.com/HSAFoundation/hsa-openmp-gcc-amd
-sudo rsync -av --exclude .git $HOME/git/hsa-openmp-gcc-amd/usr/local/hsagccver  /usr/local
-sudo rm -f /usr/local/hsagcc
-sudo rsync -av $HOME/git/hsa-openmp-gcc-amd/usr/local/hsagcc  /usr/local
+sudo dpkg -i hsa-openmp-gcc-amd/packages/ubuntu/rocmgcc6*.deb
 ```
-In the future, we will add add debian packages to the apt server for gcc6.
 
 <A Name="Infiniband">
 4. Optional Infiniband Install 
