@@ -301,7 +301,8 @@ extern hsa_status_t find_global_region(hsa_region_t region, void* data)
          err = hsa_region_get_info(region, HSA_REGION_INFO_GLOBAL_FLAGS, &flag);
          ErrorCheck(Getting Region Info, err);
  
-         if((HSA_REGION_SEGMENT_GLOBAL == segment) && (flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED)) {
+         if((HSA_REGION_SEGMENT_GLOBAL == segment) && ((flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) ||
+                 (flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED))) {
                  *((hsa_region_t*)data) = region;
          }
  
@@ -466,7 +467,9 @@ status_t __CN__InitContext(){
 
     /* Extract the code object.  */
     hsa_code_object_t code_object = {0};
-    err = hsa_code_object_deserialize(__CN__HSA_CodeObjMem, __CN__HSA_CodeObjMemSz, NULL, &code_object);
+    void *raw_code_object = malloc(__CN__HSA_CodeObjMemSz);
+    memcpy(raw_code_object,__CN__HSA_CodeObjMem,__CN__HSA_CodeObjMemSz); 
+    err = hsa_code_object_deserialize(raw_code_object, __CN__HSA_CodeObjMemSz, NULL, &code_object);
     ErrorCheck(Deserialize code object , err);
 
     /* Create the empty executable.  */
