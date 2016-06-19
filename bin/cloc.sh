@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.13
+PROGVERSION=1.0.14
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -61,7 +61,8 @@ function usage(){
     -ll       Generate IR for LLVM steps before generating hsaco
     -s        Generate dissassembled gcn from hsaco
     -g        Generate debug information
-    -noqp     No quickpath, Use LLVM IR commands
+    -noqp     No quickpath, Use LLVM toolchain commands
+    -noshared Do not link hsaco as shared object, forces noqp
     -version  Display version of cloc then exit
     -v        Verbose messages
     -n        Dryrun, do nothing, show commands that would execute
@@ -173,6 +174,7 @@ while [ $# -gt 0 ] ; do
       -ll) 		GENLL=true;;
       -s) 		GENASM=true;;
       -noqp) 		NOQP=true;;
+      -noshared) 	NOSHARED=true;;
       -clopts) 		CLOPTS=$2; shift ;; 
       -I) 		INCLUDES="$INCLUDES -I $2"; shift ;; 
       -opt) 		LLVMOPT=$2; shift ;; 
@@ -342,7 +344,7 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
       CLOPTS="-v $CLOPTS"
    fi
 
-   if [ $NOQP ] || [ $GENLL ] ; then 
+   if [ $NOQP ] || [ $GENLL ] || [ $NOSHARED ] ; then 
       quickpath="false"
    else
       quickpath="true"
@@ -398,7 +400,13 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
       runcmd "$AMDLLVM/bin/$CMD_LLC -o $TMPDIR/$FNAME.gcn $TMPDIR/$FNAME.$LLC_BC.bc"
 
       [ $VERBOSE ] && echo "#Step:	ld.lld		gcn --> hsaco ..."
-      runcmd "$AMDLLVM/bin/ld.lld $TMPDIR/$FNAME.gcn -shared -o $OUTDIR/$OUTFILE"
+      if [ $NOSHARED ] ; then 
+           SHAREDARG=""
+      else 
+           SHAREDARG="-shared"
+      fi
+      #  FIXME:  Why does shared sometimes cause the -fPIC problem ?
+      runcmd "$AMDLLVM/bin/ld.lld $TMPDIR/$FNAME.gcn --no-undefined $SHAREDARG -o $OUTDIR/$OUTFILE"
  
 
    fi # end of if quickpath then ... else  ...
