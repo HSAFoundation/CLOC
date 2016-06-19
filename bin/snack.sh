@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.13
+PROGVERSION=1.0.14
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -76,7 +76,9 @@ function usage(){
    Options without values:
     -c        Compile generated source code to create .o file
     -ll       Tell cloc.sh to generate IR for LLVM steps
-    -s        Generate gsn assembly from llc output
+    -noqp     Tell cloc.sh to not use quick path
+    -noshared Tell cloc.sh to not create shared object.
+    -s        Generate gcn assembly (.s) from lld output
     -version  Display version of snack then exit
     -v        Verbose messages
     -vv       Get additional verbose messages from cloc.sh
@@ -190,6 +192,8 @@ while [ $# -gt 0 ] ; do
       -noglobs)  	NOGLOBFUNS=1;;  
       -kstats)  	KSTATS=1;;  
       -ll) 		GENLL=true;; 
+      -noqp) 		NOQP=true;; 
+      -noshared) 	NOSHARED=true;; 
       -s) 		GENASM=true;; 
       -opt) 		LLVMOPT=$2; shift ;; 
       -gccopt) 		GCCOPT=$2; shift ;; 
@@ -327,6 +331,12 @@ fi
 
 if [ $GENLL ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -ll"
+fi
+if [ $NOQP ] ; then
+   OTHERCLOCFLAGS="$OTHERCLOCFLAGS -noqp"
+fi
+if [ $NOSHARED ] ; then
+   OTHERCLOCFLAGS="$OTHERCLOCFLAGS -noshared"
 fi
 if [ $GENASM ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -s"
