@@ -1,0 +1,4 @@
+
+This directory includes changes needed on top of the libclc for amdgcn builtins. 
+
+The only changes are some include files and the workitem functions. 
