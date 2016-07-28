@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.14
+PROGVERSION=1.0.15
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -242,7 +242,7 @@ LINKOPTS="-Xclang -mlink-bitcode-file -Xclang $LIBGCN/lib/libamdgcn.$LC_MCPU.bc"
 INCLUDES="-I ${LIBGCN}/include ${INCLUDES}" 
 
 #  Define the subcomands
-CMD_CLC=${CMD_CLC:-clang $CLOPTS $LINKOPTS $INCLUDES -include clc/clc.h -Dcl_clang_storage_class_specifiers -Dcl_khr_fp64 -target amdgcn--amdhsa -mcpu=$LC_MCPU} 
+CMD_CLC=${CMD_CLC:-clang -x cl -Xclang -cl-std=CL2.0 -D__CLC_INTERNAL $CLOPTS $LINKOPTS $INCLUDES -include clc/clc.h -Dcl_clang_storage_class_specifiers -Dcl_khr_fp64 -target amdgcn--amdhsa -mcpu=$LC_MCPU } 
 CMD_LLA=${CMD_LLA:-llvm-dis}
 CMD_LLL=${CMD_LLL:-llvm-link}
 CMD_OPT=${CMD_OPT:-opt -O$LLVMOPT -mcpu=$LC_MCPU -amdgpu-annotate-kernel-features}
