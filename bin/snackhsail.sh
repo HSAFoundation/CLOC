@@ -26,7 +26,7 @@
 #  It does call the new cloc.sh but with the -brig flag
 #  The maintainence of this version is stopping.
 #
-PROGVERSION=1.0.15
+PROGVERSION=1.2.0
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -103,7 +103,7 @@ function usage(){
     -p        <path>         $HSA_LLVM_PATH or <sdir> if HSA_LLVM_PATH not set
                              <sdir> is actual directory of snack.sh 
     -hlcpath  <path>         Default=/opt/rocm/hlc3.2/bin
-    -rp       <HSA RT path>  Default=$HSA_RUNTIME_PATH or /opt/rocm/hsa
+    -hsart    <HSA RT>       Default=CLOC_PATH/..
     -o        <outfilename>  Default=<filename>.<ft> 
     -foption  <fnlizer opts> Default=""  Finalizer options
     -hsaillib <hsail filename>  
@@ -115,7 +115,7 @@ function usage(){
     snack.sh -c -hsail my.cl    /* create hsail snackwrap.c and .o   */
     snack.sh -t /tmp/foo my.cl  /* will automatically set -k         */
 
-   You may set environment variables HSA_LLVM_PATH, HSA_RUNTIME_PATH, 
+   You may set environment variables HSA_LLVM_PATH, HSA_RT, 
    instead of providing options -p, -rp.
    Command line options will take precedence over environment variables. 
 
@@ -185,7 +185,7 @@ while [ $# -gt 0 ] ; do
       -hsaillib)        HSAILLIB=$2; shift ;; 
       -p)               HSA_LLVM_PATH=$2; shift ;;
       -hlcpath)         HLC_PATH=$2; shift ;;
-      -rp)              HSA_RUNTIME_PATH=$2; shift ;;
+      -hsart)           HSA_RT=$2; shift ;;
       -m32)		ADDRMODE=32;;
       -h) 		usage ;; 
       -help) 		usage ;; 
@@ -227,7 +227,7 @@ HLC_PATH=${HLC_PATH:-/opt/rocm/hlc3.2/bin}
 #  Set Default values
 GCCOPT=${GCCOPT:-3}
 LLVMOPT=${LLVMOPT:-2}
-HSA_RUNTIME_PATH=${HSA_RUNTIME_PATH:-/opt/rocm/hsa}
+HSA_RT=${HSA_RT:-/opt/rocm/hsa}
 CMD_BRI=${CMD_BRI:-HSAILasm }
 
 FORTRAN=${FORTRAN:-0};
@@ -261,14 +261,14 @@ if [ ! -d $HSA_LLVM_PATH ] ; then
    echo "        Set env variable HSA_LLVM_PATH or use -p option"
    exit $DEADRC
 fi
-if [ $MAKEOBJ ] && [ ! -d "$HSA_RUNTIME_PATH/lib" ] ; then 
-   echo "ERROR:  snack.sh -c option needs HSA_RUNTIME_PATH"
-   echo "        Missing directory $HSA_RUNTIME_PATH/lib "
-   echo "        Set env variable HSA_RUNTIME_PATH or use -rp option"
+if [ $MAKEOBJ ] && [ ! -d "$HSA_RT/lib" ] ; then 
+   echo "ERROR:  snack.sh -c option needs HSA_RT"
+   echo "        Missing directory $HSA_RT/lib "
+   echo "        Set env variable HSA_RT or use -rp option"
    exit $DEADRC
 fi
-if [ $MAKEOBJ ] && [ ! -f $HSA_RUNTIME_PATH/include/hsa.h ] ; then 
-   echo "ERROR:  Missing $HSA_RUNTIME_PATH/include/hsa.h"
+if [ $MAKEOBJ ] && [ ! -f $HSA_RT/include/hsa.h ] ; then 
+   echo "ERROR:  Missing $HSA_RT/include/hsa.h"
    echo "        snack.sh requires HSA includes"
    exit $DEADRC
 fi
@@ -422,7 +422,7 @@ fi
 
 [ $VERBOSE ] && echo "#Info:  Run date:	$RUNDATE" 
 [ $VERBOSE ] && echo "#Info:  LLVM path:	$HSA_LLVM_PATH"
-[ $MAKEOBJ ] && [ $VERBOSE ] && echo "#Info:  Runtime:	$HSA_RUNTIME_PATH"
+[ $MAKEOBJ ] && [ $VERBOSE ] && echo "#Info:  Runtime:	$HSA_RT"
 [ $KEEPTDIR ] && [ $VERBOSE ] && echo "#Info:  Temp dir:	$TMPDIR" 
 if [ $MAKESTR ] || [ $MAKEOBJ ] ; then  
    [ $VERBOSE ] && echo "#Info:  gcc loc:	$CMD_GCC" 
@@ -549,19 +549,18 @@ fi
 if [ $MAKEOBJ ] ; then 
    [ $VERBOSE ] && echo "#Step:  gcc		snackwrap.c + _brig.h --> $OUTFILE  ..."
    if [ $DRYRUN ] ; then
-      echo "$CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RUNTIME_PATH/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
+      echo "$CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RT/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
    else
-      $CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RUNTIME_PATH/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE
+      $CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RT/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE
       rc=$?
       if [ $rc != 0 ] ; then 
          echo "ERROR:  The following command failed with return code $rc."
-         echo "        $CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RUNTIME_PATH/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
+         echo "        $CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RT/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
          do_err $rc
       fi
    fi
    if [ $KSTATS == 1 ] ; then 
-      export LD_LIBRARY_PATH=$HSA_RUNTIME_PATH/lib
-      $CMD_GCC -o $TMPDIR/kstats -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RUNTIME_PATH/include $OUTDIR/$OUTFILE $TMPDIR/kstats.c -L$HSA_RUNTIME_PATH/lib -lhsa-runtime64 
+      $CMD_GCC -o $TMPDIR/kstats -O$GCCOPT -I$TMPDIR -I$INDIR -I$HSA_LLVM_PATH/../include -I$HSA_RT/include $OUTDIR/$OUTFILE $TMPDIR/kstats.c -L$HSA_RT/lib -lhsa-runtime64 
       $TMPDIR/kstats
    fi 
 

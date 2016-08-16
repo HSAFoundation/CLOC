@@ -1,4 +1,4 @@
-CLOC - V 1.0.15 
+CLOC - V 1.2.1 
 ===============
 
 CLOC:  CL Offline Compiler
@@ -213,20 +213,19 @@ for all kernels declared in the .cl file.  Use this command to
 compile the hw.cl file with snack.sh.
 
 ```
-/opt/amd/cloc/bin/snack.sh -c hw.cl
+snack.sh -c hw.cl
 ```
 
 You can now compile and build the binary "HelloWorld" with any c++ compiler.
 Here is the command to build HelloWorld with g++. 
 
 ```
-g++ -o HelloWorld hw.o HelloWorld.cpp -L/opt/hsa/lib -lhsa-runtime64 -lelf 
+g++ -o HelloWorld hw.o HelloWorld.cpp -L/opt/rocm/lib -lhsa-runtime64 -lelf 
 
 ```
 
 Then execute the program as follows.
 ```
-export LD_LIBRARY_PATH=/opt/hsa/lib
 $ ./HelloWorld
 Hello HSA World
 ```
@@ -278,15 +277,15 @@ position. The generated brig will also include the library.
 In it's simplest form, cloc.sh compiles a .cl file into an HSA code object file.   This is a standard ELF file that can be loaded by the HSA API without the need for finalization.   However, the rest of the HSA API is required to launch this object code to the GPU.  An example is provided in the examples/hsa directory that shows the necessary HSA API to launch an HSA code object.  Use these commands to run this example:
 ```
 cd $HOME
-cp -rp /opt/rocm/cloc/examples/hsa/vector_copy_codeobject /tmp
-cd /tmp/vector_copy_codeobject
+cp -rp /opt/rocm/cloc/examples/hsa/vector_copy_codeobject_rocm /tmp
+cd /tmp/vector_copy_codeobject_rocm
 make
 make test
 ```
 The make command will compile vector_copy_codeobject.cpp with these commands:
 ```
 g++ -c -std=c++11 -I/opt/rocm/hsa/include -o obj/vector_copy_codeobject.o vector_copy_codeobject.cpp
-g++ obj/vector_copy_codeobject.o -L/opt/rocm/hsa/lib -lhsa-runtime64 -o vector_copy_codeobject
+g++ obj/vector_copy_codeobject.o -L/opt/rocm/lib -lhsa-runtime64 -o vector_copy_codeobject
 ```
 It then calls cloc.sh to create the file vectory_copy_codeobject.hsaco with this command. 
 ```

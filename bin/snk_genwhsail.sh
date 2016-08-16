@@ -244,7 +244,7 @@ void barrier_sync(int stream_num, snk_task_t *dep_task_list) {
     }
 
     /* Wait on completion signal til kernel is finished.  */
-    hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, UINT64_MAX, HSA_WAIT_STATE_BLOCKED);
+    hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, -1 , HSA_WAIT_STATE_ACTIVE);
 
     hsa_signal_destroy(signal);
 }
@@ -278,7 +278,7 @@ extern void stream_sync(int stream_num) {
     hsa_signal_store_relaxed(queue->doorbell_signal, index);
 
     /* Wait on completion signal til kernel is finished.  */
-    hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, UINT64_MAX, HSA_WAIT_STATE_BLOCKED);
+    hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, -1 , HSA_WAIT_STATE_ACTIVE);
 
     hsa_signal_destroy(signal);
 
@@ -311,6 +311,10 @@ status_t SNACK_Init(){
     hsa_status_t err;
     hsa_agent_t thisAgent;
     HSA_FC = 1;
+
+    Sync_CommandQ_Len = 0 ; 
+    int i;
+    for( i=0 ; i<SNK_MAX_STREAMS ; i++) Stream_CommandQ_Len[i]=0; 
 
     err = hsa_init();
     ErrorCheck(Initializing the hsa runtime, err);
@@ -398,8 +402,9 @@ static hsa_region_t HSA_GlobalRegion;
 static int HSA_FC = 0 ;
 
 /* Stream specific globals */
-hsa_queue_t* Stream_CommandQ[SNK_MAX_STREAMS];
-static int          SNK_NextTaskId = 0 ;
+hsa_queue_t*          Stream_CommandQ[SNK_MAX_STREAMS];
+static unsigned int   Stream_CommandQ_Len[SNK_MAX_STREAMS];
+static int            SNK_NextTaskId = 0 ;
 
 /* Context(cl file) specific globals */
 hsa_agent_t                      __CN__Agent;
@@ -411,6 +416,9 @@ int                              __CN__FC = 0;
 /* Global variables */
 hsa_queue_t*                     Sync_CommandQ;
 hsa_signal_t                     Sync_Signal; 
+static unsigned int              Sync_CommandQ_Len;
+static unsigned int              CommandQ_Max_Len;
+
 #include "_CN__brig.h" 
 
 status_t SNACK_Init();
@@ -431,12 +439,6 @@ status_t __CN__InitContext(){
     err = hsa_agent_get_info(__CN__Agent, HSA_AGENT_INFO_NAME, name);
     ErrorCheck(Querying the agent name, err);
     /* printf("The agent name is %s.\n", name); */
-
-    /* Query the maximum size of the queue.  */
-    uint32_t queue_size = 0;
-    err = hsa_agent_get_info(__CN__Agent, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_size);
-    ErrorCheck(Querying the agent maximum queue size, err);
-    /* printf("The maximum queue size is %u.\n", (unsigned int) queue_size);  */
 
     /* Create hsa program.  */
     memset(&__CN__HsaProgram,0,sizeof(hsa_ext_program_t));
@@ -481,22 +483,9 @@ status_t __CN__InitContext(){
     err = (__CN__KernargRegion.handle == (uint64_t)-1) ? HSA_STATUS_ERROR : HSA_STATUS_SUCCESS;
     ErrorCheck(Finding a kernarg memory region, err);
 
-
-    /*  Create a queue using the maximum size.  */
-    err = hsa_queue_create(__CN__Agent, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &Sync_CommandQ);
-    ErrorCheck(Creating the queue, err);
-
     /*  Create signal to wait for the dispatch to finish. this Signal is only used for synchronous execution  */ 
     err=hsa_signal_create(1, 0, NULL, &Sync_Signal);
     ErrorCheck(Creating a HSA signal, err);
-
-    /* Create queues and signals for each stream. */
-    int stream_num;
-    for ( stream_num = 0 ; stream_num < SNK_MAX_STREAMS ; stream_num++){
-       /* printf("calling queue create for stream %d\n",stream_num); */
-       err=hsa_queue_create(__CN__Agent, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &Stream_CommandQ[stream_num]);
-       ErrorCheck(Creating the Stream Command Q, err);
-    }
 
     return STATUS_SUCCESS;
 } /* end of __CN__InitContext */
@@ -613,8 +602,26 @@ function write_kernel_template(){
 
     hsa_queue_t* this_Q ;
     if ( stream_num < 0 ) { /*  Sychronous execution */
+       if ( Sync_CommandQ_Len == 0 )  {
+          /* Query the maximum size of the queue.  */
+          err = hsa_agent_get_info(__CN__Agent, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &CommandQ_Max_Len);
+          ErrorCheck(Querying the agent maximum queue size, err);
+          /* printf("The maximum queue size is %u.\n", (unsigned int) CommandQ_Max_Len);  */
+          err = hsa_queue_create(__CN__Agent, CommandQ_Max_Len, HSA_QUEUE_TYPE_MULTI, NULL, NULL, UINT32_MAX, UINT32_MAX, &Sync_CommandQ);
+          ErrorCheck(Creating the synchronous queue, err);
+          Sync_CommandQ_Len = CommandQ_Max_Len;
+       }
        this_Q = Sync_CommandQ;
-    } else { /* Asynchrnous execution uses one command Q per stream */
+    } else { 
+       /* Asynchrnous execution use one queue per stream, created on demand */
+       if ( Stream_CommandQ_Len[stream_num] == 0 )  {
+          err = hsa_agent_get_info(__CN__Agent, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &CommandQ_Max_Len);
+          ErrorCheck(Querying the agent maximum queue size, err);
+          err=hsa_queue_create(__CN__Agent, CommandQ_Max_Len, HSA_QUEUE_TYPE_MULTI, NULL, NULL, UINT32_MAX, UINT32_MAX, &Stream_CommandQ[stream_num]);
+          ErrorCheck(Creating the Stream Command Q, err);
+          /* printf("The max queue size for stream %d is %u.\n", stream_num, (unsigned int) CommandQ_Max_Len);  */
+          Stream_CommandQ_Len[stream_num]  = CommandQ_Max_Len;
+       }
        this_Q = Stream_CommandQ[stream_num];
     }
 
@@ -673,7 +680,7 @@ function write_kernel_template(){
 
     if ( stream_num < 0 ) {
        /* For default synchrnous execution, wait til kernel is finished.  */
-       hsa_signal_value_t value = hsa_signal_wait_acquire(Sync_Signal, HSA_SIGNAL_CONDITION_LT, 1, UINT64_MAX, HSA_WAIT_STATE_BLOCKED);
+       hsa_signal_value_t value = hsa_signal_wait_acquire(Sync_Signal, HSA_SIGNAL_CONDITION_LT, 1, -1 , HSA_WAIT_STATE_ACTIVE);
     }
 
     /*  *** END OF KERNEL LAUNCH TEMPLATE ***  */

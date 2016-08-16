@@ -26,7 +26,7 @@
 #include <fstream>
 #include <iostream>
 
-#include <hsa.h>
+#include <hsa/hsa.h>
 #define GLOBAL_SIZE 1024*1024
 #define LOCAL_SIZE 512
 
@@ -107,7 +107,10 @@ static hsa_status_t get_device_memory_region(hsa_region_t region, void* data) {
     if ((flags & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) ||
         (flags & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED)) 
     {
-        printf ( "found device region, flags=%x\n", flags);
+        if (flags & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) 
+           printf ( "found FINE GRAINED device region, flags=%x\n", flags);
+        else 
+           printf ( "found COURSE GRAINED device region, flags=%x\n", flags);
         hsa_region_t* ret = (hsa_region_t*) data;
         *ret = region;
         return HSA_STATUS_INFO_BREAK;

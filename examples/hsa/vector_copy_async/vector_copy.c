@@ -24,8 +24,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "hsa.h"
-#include "hsa_ext_finalize.h"
+#include "hsa/hsa.h"
+#include "hsa/hsa_ext_finalize.h"
 
 #define GRID_SIZE_X 1024*1024
 #define GROUP_SIZE_X 512

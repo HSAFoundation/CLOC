@@ -75,13 +75,22 @@ kfd_exists=$(grep -c -w kgd2kfd_init /proc/kallsyms)
 iommu_exists=$(grep -c -w amd_iommu_bind_pasid /proc/kallsyms)
 
 if [[ $kv_exists_result == "Yes" ]]; then
-	if [[ $radeon_exists == "1" ]]; then
+        probetype="radeon"
+	if [[ $radeon_exists == "1" ]]; then 
 		radeon_exists_result="Yes"
 		radeon_blacklisted="0"
 	else
+	   if [[ $amdgpu_exists == "1" ]]; then
+		amdgpu_exists_result="Yes"
+		amdgpu_blacklisted="0"
+                probetype="amdgpu"
+           else
 		radeon_exists_result="NO"
+		amdgpu_exists_result="NO"
 		radeon_blacklisted=$(grep blacklist /etc/modprobe.d/* | grep -c -w radeon)
+		amdgpu_blacklisted=$(grep blacklist /etc/modprobe.d/* | grep -c -w amdgpu)
 		__pass_flag="NO"
+	   fi
 	fi
 fi
 
@@ -141,13 +150,23 @@ fi
 
 echo -e ""
 if [[ $kv_exists_result == "Yes" ]]; then
+   if [[ $probetype == "radeon" ]]; then
 	echo -e "Kaveri detected:............................$kv_exists_result"
 	echo -e "Kaveri type supported:......................$kv_type_result"
 	echo -e "radeon module is loaded:....................$radeon_exists_result"
 	if [[ ! $radeon_blacklisted == "0" ]]; then
 		echo -e "Radeon module is blacklisted!!!"
 	fi
+   else
+	echo -e "Kaveri detected:............................$kv_exists_result"
+	echo -e "Kaveri type supported:......................$kv_type_result"
+	echo -e "amdgpu module is loaded:....................$amdgpu_exists_result"
+	if [[ ! $amdgpu_blacklisted == "0" ]]; then
+		echo -e "amdgpu module is blacklisted!!!"
+	fi
+   fi
 else
+   if [[ $cz_exists_result == "Yes" ]]; then
 	echo -e "Carrizo detected:...........................$cz_exists_result"
 	if [[ $cz_exists_result == "Yes" ]]; then
 		echo -e "Carrizo type supported:.....................$cz_type_result"
@@ -158,6 +177,10 @@ else
 	else
 		echo -e "Kaveri detected:............................$kv_exists_result"
 	fi
+   else
+	echo -e "FIXME: No Kaveri or Carrizo detected, could be dGPU"
+        # FIXME : Need to find R9 GPU as gpu_id_result for fiji or other support dGPU
+   fi
 fi
 echo -e "amdkfd module is loaded:....................$kfd_exists_result"
 echo -e "AMD IOMMU V2 module is loaded:..............$iommu_exists_result"

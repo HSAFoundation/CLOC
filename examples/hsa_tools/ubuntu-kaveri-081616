@@ -1,0 +1,21 @@
+
+HSA Tools Info:
+Date:2016-08-16         Hostname:xn3         
+
+NAME                  	VERSION                         	DATE        TYPE      
+----                  	-------                         	----        ----      
+BIOS Firmware         	F6                              	08/12/2014  firmware  
+Linux Kernel Version  	4.4.0-kfd-compute               	2016-Jul-22 kernel    
+AMD KFD Kernel Driver 	2.0.0                           	2016-07-22  kernel    
+HSA Runtime           	1.2.0                           	2016-08-08  runtime   
+HCC compiler          	0.10.16313                      	2016-08-03  compiler  
+CLOC Compiler         	1.2.1                           	2016-08-16  compiler  
+GCC base              	4.9.3                           	2015-11-30  compiler  
+Experimental rocmgcc6 	0.2-1                           	2016-07-12  compiler  
+amdllvm               	0.2-5                           	2016-07-28  compiler  
+HIP                   	0.92.0                          	2016-08-02  compiler  
+ROCm sys mgmt interface	1.0.1                           	2016-07-22  utility   
+HSAIL/Brig Assember   	3.0.                            	2016-08-03  utility   
+Rocm Profiler         	4.0.5672                        	2016-08-01  tool      
+ROCm debugger         	1.2.7                           	2016-07-29  tool      
+rocm_tools script     	1.2.1                           	2016-08-16  tool      

@@ -1,8 +1,6 @@
 #!/bin/bash
 
 
-export LD_LIBRARY_PATH=/opt/rocm/hsa/lib
-
 # Compile accelerated functions
 echo 
 if [ -f test_hsail_lib.o ] ; then rm test_hsail_lib.o ; fi
@@ -13,7 +11,7 @@ snackhsail.sh -v -c -hsaillib ../../mathdemo_hsaillib/mathdemo_hsaillib.hsail te
 echo 
 if [ -f test_hsail_lib ] ; then rm test_hsail_lib ; fi
 
-g++ -o test_hsail_lib test_hsail_lib.o test_hsail_lib.cpp -L/opt/rocm/hsa/lib -lhsa-runtime64 -lm
+g++ -o test_hsail_lib test_hsail_lib.o test_hsail_lib.cpp -L/opt/rocm/lib -lhsa-runtime64 -lm
 
 #  Execute
 echo

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-export LD_LIBRARY_PATH=/opt/rocm/hsa/lib
-
 # Compile accelerated functions
 echo 
 if [ -f CSquares.o ] ; then rm CSquares.o ; fi
@@ -11,8 +9,8 @@ snack.sh -c CSquares.cl
 # Compile Main and link to accelerated functions in CSquares.o
 echo 
 if [ -f CSquares ] ; then rm CSquares ; fi
-echo "g++ -o CSquares CSquares.o CSquares.cpp -L/opt/rocm/hsa/lib -lhsa-runtime64  "
-g++ -o CSquares CSquares.o CSquares.cpp -L/opt/rocm/hsa/lib -lhsa-runtime64 
+echo "g++ -o CSquares CSquares.o CSquares.cpp -L/opt/rocm/lib -lhsa-runtime64  "
+g++ -o CSquares CSquares.o CSquares.cpp -L/opt/rocm/lib -lhsa-runtime64 
 
 #  Execute
 echo

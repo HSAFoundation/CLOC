@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.0.15
+PROGVERSION=1.2.1
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -267,7 +267,7 @@ filetype=${LASTARG##*\.}
 # The old snack with brig and hsail is now snackhsail.sh
 # The snack.sh will only be for generating code object.
 #
-if [ "$filetype" == "hsail" ] || [ $GEN_IL] || [ $GEN_BRIG ] || [ $HSAILLIB ] || [ $GEN_DEBUG ]  ; then 
+if [ "$filetype" == "hsail" ] || [ $GEN_IL ] || [ $GEN_BRIG ] || [ $HSAILLIB ] || [ $GEN_DEBUG ]  ; then 
    echo "ERROR:  The use of brig or hsail in snack.sh is deprecated. Please use"
    echo "        the snackhsail.sh command to generate and embed hsail or brig."
    echo "        This includes the -g option to generate HSAIL debug info"
@@ -470,7 +470,6 @@ if [ $MAKEOBJ ] ; then
    [ $VERBOSE ] && echo "#Step:  gcc		snackwrap.c + _hsaco.h --> $OUTFILE  ..."
    runcmd "$CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$CLOC_PATH/../include -I$HSA_RT/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
    if [ $KSTATS == 1 ] ; then 
-      export LD_LIBRARY_PATH=$HSA_RT/lib
       runcmd "$CMD_GCC -o $TMPDIR/kstats -O$GCCOPT -I$TMPDIR -I$INDIR -I$CLOC_PATH/../include -I$HSA_RT/include $OUTDIR/$OUTFILE $TMPDIR/kstats.c -L$HSA_RT/lib -lhsa-runtime64"
       runcmd "$TMPDIR/kstats"
    fi 

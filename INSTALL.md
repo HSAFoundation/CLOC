@@ -1,7 +1,7 @@
 Cloc Install Instructions
 ===============================
 
-These instructions are for CLOC 1.0.15 (June 2016 Update). CLOC now installs from the ROCM apt server.  Please remove old packages that you installed with dpkg -i before using the new apt server.   These include amdcloc, libamdgcn, amdllvm, amdllvmbin, hlc, libhsakmt, hsa-runtime-dev, and hcc.  Use the "dpkg -P" command to remove these packages. 
+These instructions are for CLOC 1.2.1 (Aug 2016 Update). CLOC now installs from the ROCM apt server.  Please remove old packages that you installed with dpkg -i before using the new apt server.   These include amdcloc, libamdgcn, amdllvm, amdllvmbin, hlc, libhsakmt, hsa-runtime-dev, and hcc.  Use the "dpkg -P" command to remove these packages. 
 
 This set of instructions can be used to install a comprehensive HSA software stack and the Cloc utility for Ubuntu.  In addition to Linux, you must have an HSA compatible system such as a Kaveri processor, a Carrizo processor, or a fiji card. There are four steps to this process:
 
@@ -74,12 +74,13 @@ The output of above command should look like this.
 ```
 Kaveri detected:............................Yes
 Kaveri type supported:......................Yes
-Radeon module is loaded:....................Yes
+amdgpu module is loaded:....................Yes
 KFD module is loaded:.......................Yes
 AMD IOMMU V2 module is loaded:..............Yes
 KFD device exists:..........................Yes
 KFD device has correct permissions:.........Yes
 Valid GPU ID is detected:...................Yes
+
 Can run HSA.................................YES
 ```
 

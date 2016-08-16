@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#  Set HSA Environment 
-export LD_LIBRARY_PATH=/opt/rocm/hsa/lib
-
 # Compile accelerated functions
 echo 
 if [ -f sumKernel.o ] ; then rm sumKernel.o ; fi
@@ -11,8 +8,8 @@ snack.sh -c sumKernel.cl
 
 echo 
 if [ -f vecsum ] ; then rm vecsum ; fi
-echo g++ -O3  -o vecsum sumKernel.o vecsum.cpp -L /opt/rocm/hsa/lib -lhsa-runtime64  
-g++ -O3  -o vecsum sumKernel.o vecsum.cpp -L /opt/rocm/hsa/lib -lhsa-runtime64 
+echo g++ -O3  -o vecsum sumKernel.o vecsum.cpp -L /opt/rocm/lib -lhsa-runtime64  
+g++ -O3  -o vecsum sumKernel.o vecsum.cpp -L /opt/rocm/lib -lhsa-runtime64 
 
 #  Execute
 echo

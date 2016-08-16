@@ -7,7 +7,7 @@
 #  TODO: Add Python, boost,  Kokkos, HcBlas, HcSparse
 #  Please contact Greg if you want your HSA tool added to this list
 #
-PROGVERSION=1.0.15
+PROGVERSION=1.2.1
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -170,7 +170,7 @@ fi
 if [ $rc == 0 ] ; then 
 #  Fixme - should be using hsainfo for this
    hsartm_ver=`dpkg-query -s  $hrt_dpkg_name | grep Version | cut -d" " -f2`
-   fname="/opt/rocm/hsa/lib/libhsa-runtime64.so"
+   fname="/opt/rocm/lib/libhsa-runtime64.so"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    hsartm_date="$day"
 #  Some hacks for special hsa-runtime releases. 
@@ -206,7 +206,7 @@ else
 fi
 fi
 
-llvmlc_name="AMD llvm"
+llvmlc_name="amdllvm"
 dpkg-query -s amdllvm 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
    fname="/opt/amd/llvm/bin/llc"
@@ -265,7 +265,7 @@ else
    gccbas_date="  "
 fi
 
-gcchsa_name="Experimental GCC6 "
+gcchsa_name="Experimental rocmgcc6"
 dpkg-query -s rocmgcc6 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
    gcchsa_ver=`dpkg-query -s rocmgcc6 | grep Version | cut -d" " -f2`
@@ -276,6 +276,19 @@ if [ $? == 0 ] ; then
 else
    gcchsa_ver="MISSING"
    gcchsa_date="  "
+fi
+
+rocsmi_name="ROCm sys mgmt interface"
+dpkg-query -s rocm-smi 2>/dev/null >/dev/null
+if [ $? == 0 ] ; then 
+   rocsmi_ver=`dpkg-query -s rocm-smi | grep Version | cut -d" " -f2`
+   fname="/opt/rocm/bin/rocm-smi"
+   day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
+   rocsmi_date="$day"
+   rocsmi_loc=$fname
+else
+   rocsmi_ver="MISSING"
+   rocsmi_date="  "
 fi
 
 if  [ $PRINTALL ] ; then 
@@ -331,11 +344,11 @@ else
 fi
 fi
 
-profil_name="Sys mgmt (smi)"
-dpkg-query -s rocm-smi 2>/dev/null >/dev/null
+profil_name="Rocm Profiler"
+dpkg-query -s rocm-profiler 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   profil_ver=`dpkg-query -s rocm-smi | grep Version | cut -d" " -f2`
-   fname="/opt/rocm/bin/rocm-smi"
+   profil_ver=`dpkg-query -s rocm-profiler| grep Version | cut -d" " -f2`
+   fname="/opt/rocm/profiler/bin/CodeXLGpuProfiler"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    profil_date="$day"
    profil_loc=$fname
@@ -462,6 +475,7 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$codepl_name" "$codepl_ver" "$codepl_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$pathsc_name" "$pathsc_ver" "$pathsc_date" "compiler" "$pathsc_loc"
 [ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencl_name" "$opencl_ver" "$opencl_date" "compiler" "$opencl_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$rocsmi_name" "$rocsmi_ver" "$rocsmi_date" "utility" "$rocsmi_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "utility" "$llvmbe_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsaila_name" "$hsaila_ver" "$hsaila_date" "utility" "$hsaila_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$profil_name" "$profil_ver" "$profil_date" "tool" "$profil_loc"
@@ -496,6 +510,7 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$pathsc_name" "$pathsc_ver" "$pathsc_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencl_name" "$opencl_ver" "$opencl_date" "compiler" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmlc_name" "$llvmlc_ver" "$llvmlc_date" "compiler" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "compiler" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$rocsmi_name" "$rocsmi_ver" "$rocsmi_date" "utility" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsaila_name" "$hsaila_ver" "$hsaila_date" "utility" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$profil_name" "$profil_ver" "$profil_date" "tool" 
 [ $LIMITED ] || [ $PRINTALL ] && \
