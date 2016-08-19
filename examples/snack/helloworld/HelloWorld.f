@@ -35,4 +35,5 @@ C     Must use HSA global register memory
       PRINT*, "Coded message  :",secret(1:lmsg)
       CALL decode(secret,output,lparm);
       PRINT*, "Decoded message:",output(1:lmsg)
+      CALL SNACK_Stop();
       END

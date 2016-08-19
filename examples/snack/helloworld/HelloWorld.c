@@ -29,5 +29,6 @@ int main(int argc, char* argv[]) {
 	free_global(output);
 	free_global(secode);
 	free_global(output2);
+        SNACK_Stop();
 	return 0;
 }

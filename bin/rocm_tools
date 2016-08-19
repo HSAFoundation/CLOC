@@ -7,7 +7,7 @@
 #  TODO: Add Python, boost,  Kokkos, HcBlas, HcSparse
 #  Please contact Greg if you want your HSA tool added to this list
 #
-PROGVERSION=1.2.1
+PROGVERSION=1.2.2
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -190,7 +190,7 @@ if [ $LIMITED ] || [ $PRINTALL ] ; then
 opencl_name="HSA OpenCL"
 fname=`which clinfo`
 if [ -f $fname ] ; then
-   fname2="/opt/amd/opencl/current/bin/clinfo"
+   fname2="/opt/amd/opencl/current/bin/x86_64/clinfo"
    if [ -f $fname2 ] ; then
       opencl_ver=`$fname 2>&1 | grep "Platform Version" | cut -d":" -f2  | cut -d" " -f2-5`
       day=`ls -l --time-style +%Y-%m-%d $fname2 | cut -d" " -f6`
@@ -357,19 +357,17 @@ else
    profil_date="  "
 fi
 
-if [ $COMMERCIAL ] || [ $PRINTALL ] ; then 
 codexl_name="AMD CodeXL "
-dpkg-query -s amdcodexl 2>/dev/null >/dev/null
+dpkg-query -s codexl 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   codexl_ver=`dpkg-query -s amdcodexl | grep Version | cut -d" " -f2`
-   fname="/opt/AMD/*/x86_64/sprofile"
+   codexl_ver=`dpkg-query -s codexl | grep Version | cut -d" " -f2`
+   fname="/opt/CodeXL_2.1-228/CodeXLGpuProfilerRun"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    codexl_date="$day"
    codexl_loc=$fname
 else
    codexl_ver="MISSING"
    codexl_date="  "
-fi
 fi
 
 debugr_name="ROCm debugger"
@@ -397,18 +395,17 @@ else
    clocsh_date="  "
 fi
 
-if [ $LIMITED ] || [ $PRINTALL ] ; then 
 atmitl_name="ATMI"
-fname="/opt/rocm/atmi/bin/atmi_version"
-if [ -f $fname ] ; then
-   atmitl_ver=`/opt/rocm/atmi/bin/atmi_version`
+dpkg-query -s libatmi-runtime  2>/dev/null >/dev/null
+if [ $? == 0 ] ; then 
+   atmitl_ver=`dpkg-query -s rocm-gdb | grep Version | cut -d" " -f2`
+   fname="/opt/rocm/libatmi/lib/libatmi_runtime.so"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    atmitl_date="$day "
    atmitl_loc=$fname
 else
    atmitl_ver="MISSING"
    atmitl_date="  "
-fi
 fi
 
 if [ $LIMITED ] || [ $PRINTALL ] ; then 
@@ -463,8 +460,6 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$amdkfd_name" "$amdkfd_ver" "$amdkfd_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsartm_name" "$hsartm_ver" "$hsartm_date" "runtime" "$hsartm_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hcc_name" "$hcc_ver" "$hcc_date" "compiler" "$hcc_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$clocsh_name" "$clocsh_ver" "$clocsh_date" "compiler" "$clocsh_loc"
-[ $LIMITED ] || [ $PRINTALL ] && \
-printf "%-22s	%-32s	%-11s %-9s %s\n" "$atmitl_name" "$atmitl_ver" "$atmitl_date" "compiler" "$atmitl_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$gccbas_name" "$gccbas_ver" "$gccbas_date" "compiler" "$gccbas_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$gcchsa_name" "$gcchsa_ver" "$gcchsa_date" "compiler" "$gcchsa_loc"
 [ $LIMITED ] || [ $PRINTALL ] && \
@@ -475,11 +470,11 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$codepl_name" "$codepl_ver" "$codepl_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$pathsc_name" "$pathsc_ver" "$pathsc_date" "compiler" "$pathsc_loc"
 [ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencl_name" "$opencl_ver" "$opencl_date" "compiler" "$opencl_loc"
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$atmitl_name" "$atmitl_ver" "$atmitl_date" "library" "$atmitl_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$rocsmi_name" "$rocsmi_ver" "$rocsmi_date" "utility" "$rocsmi_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "utility" "$llvmbe_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsaila_name" "$hsaila_ver" "$hsaila_date" "utility" "$hsaila_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$profil_name" "$profil_ver" "$profil_date" "tool" "$profil_loc"
-[ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$codexl_name" "$codexl_ver" "$codexl_date" "tool" "$codexl_loc"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$debugr_name" "$debugr_ver" "$debugr_date" "tool" "$debugr_loc"
 [ $LIMITED ] || [ $PRINTALL ] && \
@@ -496,8 +491,6 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$amdkfd_name" "$amdkfd_ver" "$amdkfd_date"
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsartm_name" "$hsartm_ver" "$hsartm_date" "runtime" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hcc_name" "$hcc_ver" "$hcc_date" "compiler" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$clocsh_name" "$clocsh_ver" "$clocsh_date" "compiler" 
-[ $LIMITED ] || [ $PRINTALL ] && \
-printf "%-22s	%-32s	%-11s %-9s %s\n" "$atmitl_name" "$atmitl_ver" "$atmitl_date" "compiler" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$gccbas_name" "$gccbas_ver" "$gccbas_date" "compiler" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$gcchsa_name" "$gcchsa_ver" "$gcchsa_date" "compiler" 
 [ $LIMITED ] || [ $PRINTALL ] && \
@@ -509,11 +502,11 @@ printf "%-22s	%-32s	%-11s %-9s %s\n" "$pathsc_name" "$pathsc_ver" "$pathsc_date"
 [ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$opencl_name" "$opencl_ver" "$opencl_date" "compiler" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmlc_name" "$llvmlc_ver" "$llvmlc_date" "compiler" 
-printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "compiler" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$atmitl_name" "$atmitl_ver" "$atmitl_date" "library" 
+printf "%-22s	%-32s	%-11s %-9s %s\n" "$llvmbe_name" "$llvmbe_ver" "$llvmbe_date" "utility" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$rocsmi_name" "$rocsmi_ver" "$rocsmi_date" "utility" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$hsaila_name" "$hsaila_ver" "$hsaila_date" "utility" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$profil_name" "$profil_ver" "$profil_date" "tool" 
-[ $LIMITED ] || [ $PRINTALL ] && \
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$codexl_name" "$codexl_ver" "$codexl_date" "tool" 
 printf "%-22s	%-32s	%-11s %-9s %s\n" "$debugr_name" "$debugr_ver" "$debugr_date" "tool" 
 [ $LIMITED ] || [ $PRINTALL ] && \
