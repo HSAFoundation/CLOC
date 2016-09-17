@@ -3,6 +3,7 @@ size_t 	__attribute__((overloadable)) get_global_id(uint dimindx);
 size_t 	__attribute__((overloadable)) get_local_id(uint dimindx);
 size_t 	__attribute__((overloadable)) get_group_id(uint dimindx);
 
+uint    __attribute__((overloadable)) get_num_groups(uint dimindx);
 uint 	__attribute__((overloadable)) get_kernel_work_group_size(void (^block)(void));
 uint 	__attribute__((overloadable)) get_kernel_work_group_size(void (^block)(local void *, ...));
 uint 	__attribute__((overloadable)) get_kernel_preferred_work_group_size_multiple(void (^block)(void));

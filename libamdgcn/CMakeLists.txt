@@ -42,6 +42,7 @@ set(amdgcn_llfiles
          libclc_overrides/lib/workitem/get_group_id_ll.ll
          libclc_overrides/lib/workitem/get_local_id_ll.ll
          libclc_overrides/lib/workitem/get_local_size.ll
+         libclc_overrides/lib/workitem/get_num_groups_ll.ll
 #         libclc_overrides/lib/workitem/get_reserved_device_mem.ll
          libclc_overrides/lib/workitem/get_work_dim_ll.ll
 )
@@ -50,8 +51,8 @@ set(amdgcn_llfiles
 set(amdgcn_clfiles 
          libclc_overrides/lib/workitem/get_global_id.cl
          libclc_overrides/lib/workitem/get_local_id.cl
-         libclc_overrides/lib/workitem/get_group_id.cl
          libclc_overrides/lib/workitem/get_num_groups.cl
+         libclc_overrides/lib/workitem/get_group_id.cl
          libclc_overrides/lib/workitem/get_work_dim.cl
          libclc/amdgpu/lib/synchronization/barrier.cl
          libclc/amdgpu/lib/atomic/atomic.cl
