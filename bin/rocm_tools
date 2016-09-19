@@ -448,8 +448,10 @@ thisdate=`date +%Y-%m-%d`
 hostname=`hostname`
 if [ $HEADERS ] ; then
    echo 
-   echo  "HSA Tools Info:"
-   printf "Date:%-18s Hostname:%-12s\n" "$thisdate" "$hostname" 
+   printf "ROCM Tools Info : %-18s \n" "$PROGVERSION" 
+   printf "Date            : %-18s \n" "$thisdate" 
+   printf "Hostname        : %-18s \n" "$hostname" 
+   printf "Query Method    : %-18s \n" "$QCMD" 
    echo 
    if [ $PRINTREF ] ; then 
       printf "%-22s	%-32s	%-11s %-9s %s\n" "NAME" "VERSION" "DATE" "TYPE" "LOC"

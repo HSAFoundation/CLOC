@@ -26,4 +26,4 @@ default:
 }
 
 attributes #0 = { nounwind readnone }
-attributes #1 = { alwaysinline norecurse nounwind readnone }
+attributes #1 = { alwaysinline norecurse nounwind }

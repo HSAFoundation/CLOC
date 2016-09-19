@@ -1,7 +1,7 @@
 declare i8 addrspace(2)* @llvm.amdgcn.dispatch.ptr() #1
 
-; Function Attrs: alwaysinline nounwind
-define i32 @get_global_size(i32 %dim) #5 {
+; Function Attrs: alwaysinline 
+define i32 @get_global_size(i32 %dim) #0 {
 entry:
   %call = tail call noalias nonnull dereferenceable(64) i8 addrspace(2)* @llvm.amdgcn.dispatch.ptr()
   %dispatch_ptr_i32 = bitcast i8 addrspace(2)* %call to i32 addrspace(2)*

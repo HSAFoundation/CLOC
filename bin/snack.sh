@@ -96,6 +96,7 @@ function usage(){
                              <sdir> is directory where snack.sh is found
     -mcpu     <cpu>          Default=`'mymcpu`, Options: kaveri,carrizo,fiji
     -amdllvm  <path>         Default=/opt/amd/llvm or env var AMDLLVM 
+    -bclib    <bcfile>       Add a bc library for llvm-link
     -libgcn   <path>         Default=/opt/rocm/libamdgcn or env var LIBGCN 
     -opt      <LLVM opt>     Default=2, passed to cloc.sh to build code object
     -gccopt   <gcc opt>      Default=2, gcc optimization for snack wrapper
@@ -129,6 +130,14 @@ function do_err(){
          cp -rp $TMPDIR $OUTDIR
          [ $VERBOSE ] && echo "#Info:  Temp files copied to $OUTDIR/$TMPNAME"
       fi
+      if [ $GENLL ] ; then
+         if [ -f $TMPDIR/updated.ll ] ; then cp -p $TMPDIR/updated.ll $OUTDIR/$FNAME.ll ; fi
+         if [ -f $TMPDIR/updated.lnkd.ll ] ; then cp -p $TMPDIR/updated.lnkd.ll $OUTDIR/$FNAME.lnkd.ll ; fi
+         if [ -f $TMPDIR/updated.opt.ll ] ; then cp -p $TMPDIR/updated.opt.ll $OUTDIR/$FNAME.opt.ll ; fi
+      fi
+      if [ $GENASM ] ; then
+         if [ -f $TMPDIR/updated.s ] ; then cp -p $TMPDIR/updated.s $OUTDIR/$FNAME.s ; fi
+      fi
       rm -rf $TMPDIR
    else 
       if [ $KEEPTDIR ] ; then 
@@ -156,6 +165,7 @@ runcmd(){
          do_err $rc
       fi
    fi
+
 }
 function getdname(){
    local __DIRN=`dirname "$1"`
@@ -203,6 +213,7 @@ while [ $# -gt 0 ] ; do
       -t) 		TMPDIR=$2; shift ;; 
       -path)            CLOC_PATH=$2; shift ;;
       -amdllvm)         AMDLLVM=$2; shift ;;
+      -bclib)		EXTRABCLIB=$2; shift ;; 
       -libgcn)          LIBGCN=$2; shift ;;
       -hsart)           HSA_RT=$2; shift ;;
       -m32)		ADDRMODE=32;;
@@ -299,6 +310,13 @@ if [ $MAKEOBJ ] && [ ! -f $HSA_RT/include/hsa.h ] ; then
    echo "        snack.sh requires HSA includes"
    exit $DEADRC
 fi
+if [ $EXTRABCLIB ] ; then 
+   if [ ! -f $EXTRABCLIB ] ; then 
+      echo "ERROR: Environment variable EXTRABCLIB is set to $EXTRABCLIB"
+      echo "       File $EXTRABCLIB does not exist"
+      exit $DEADRC
+   fi
+fi
 
 # Parse LASTARG for directory, filename, and symbolname
 INDIR=$(getdname $LASTARG)
@@ -331,6 +349,9 @@ fi
 
 if [ $GENLL ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -ll"
+fi
+if [ $EXTRABCLIB ] ; then
+   OTHERCLOCFLAGS="$OTHERCLOCFLAGS -bclib $EXTRABCLIB"
 fi
 if [ $NOQP ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -noqp"

@@ -1,5 +1,5 @@
 
-; Function Attrs: alwaysinline nounwind readnone
+; Function Attrs: alwaysinline nounwind 
 define i32 @get_num_groups_ll(i32) #1 {
   %2 = tail call i8 addrspace(2)* @llvm.amdgcn.dispatch.ptr() #1
   switch i32 %0, label %24 [
@@ -47,7 +47,7 @@ define i32 @get_num_groups_ll(i32) #1 {
   ret i32 %32
 }
 
-attributes #1 = { alwaysinline nounwind readnone }
+attributes #1 = { alwaysinline nounwind }
 attributes #2 = { alwaysinline nounwind readnone "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-features"="+fp64-denormals,-fp32-denormals" "unsafe-fp-math"="false" "use-soft-float"="false" }
 
 declare i8 addrspace(2)* @llvm.amdgcn.dispatch.ptr() #1

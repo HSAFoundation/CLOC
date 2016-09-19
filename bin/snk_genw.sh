@@ -860,7 +860,7 @@ function parse_arg() {
    if [ "${arg_type:0:4}" == "int3" ] ; then   
       arg_type="int*"
    fi
-   simple_arg_type=`echo $arg_type | awk '{print $NF}' | sed 's/\*//'`
+   simple_arg_type=`echo "$arg_type" | awk '{print $NF}' | sed 's/\*//'`
 #  Drop keyword restrict from argument in host callable c function
    if [ "${simple_arg_type}" == "restrict" ] ; then 
       arg_type=${arg_type%% restrict*}

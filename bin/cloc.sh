@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.2.2
+PROGVERSION=1.2.3
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -76,6 +76,7 @@ function usage(){
     -libgcn  <path>           $LIBGCN or /opt/rocm/libamdgcn  
     -hlcpath <path>           $HLC_PATH or /opt/rocm/hlc3.2/bin  
     -mcpu    <cputype>        Default= value returned by mymcpu
+    -bclib   <bcfile>         Add a bc library for llvm-link
     -clopts  <compiler opts>  Default=" "
     -I       <include dir>    Provide one directory per -I option
     -lkopts  <LLVM link opts> Default=$LIBGCN/lib/libamdgcn.$mcpu.bc
@@ -180,8 +181,9 @@ while [ $# -gt 0 ] ; do
       -opt) 		LLVMOPT=$2; shift ;; 
       -lkopts) 		LKOPTS=$2; shift ;; 
       -o) 		OUTFILE=$2; shift ;; 
-      -t) 		TMPDIR=$2; shift ;; 
+      -t)		TMPDIR=$2; shift ;; 
       -hsaillib) 	HSAILLIB=$2; shift ;; 
+      -bclib)		EXTRABCLIB=$2; shift ;; 
       -mcpu)            LC_MCPU=$2; shift ;;
       -amdllvm)         AMDLLVM=$2; shift ;;
       -libgcn)          LIBGCN=$2; shift ;;
@@ -240,6 +242,16 @@ fi
 
 LINKOPTS="-Xclang -mlink-bitcode-file -Xclang $LIBGCN/lib/libamdgcn.$LC_MCPU.bc"
 INCLUDES="-I ${LIBGCN}/include ${INCLUDES}" 
+
+if [ $EXTRABCLIB ] ; then 
+   if [ -f $EXTRABCLIB ] ; then 
+      LINKOPTS="-Xclang -mlink-bitcode-file -Xclang $EXTRABCLIB $LINKOPTS"
+   else
+      echo "ERROR: Environment variable EXTRABCLIB is set to $EXTRABCLIB"
+      echo "       File $EXTRABCLIB does not exist"
+      exit $DEADRC
+   fi
+fi
 
 #  Define the subcomands
 CMD_CLC=${CMD_CLC:-clang -x cl -Xclang -cl-std=CL2.0 -D__CLC_INTERNAL $CLOPTS $LINKOPTS $INCLUDES -include clc/clc.h -Dcl_clang_storage_class_specifiers -Dcl_khr_fp64 -target amdgcn--amdhsa -mcpu=$LC_MCPU } 
@@ -420,6 +432,13 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
       countclause=" count=$textsz skip=$textstart"
       dd if=$OUTDIR/$OUTFILE of=$OUTDIR/$FNAME.raw bs=1 $countclause 2>/dev/null
       hexdump -v -e '/1 "0x%02X "' $OUTDIR/$FNAME.raw | $AMDLLVM/bin/llvm-mc -arch=amdgcn -mcpu=$LC_MCPU -disassemble >$OUTDIR/$FNAME.s 2>$OUTDIR/$FNAME.s.err
+      rm $OUTDIR/$FNAME.raw
+      if [ "$LC_MCPU" == "kaveri" ] ; then 
+         echo "WARNING:  Disassembly not supported for Kaveri. See $FNAME.s.err"
+      else
+         rm $OUTDIR/$FNAME.s.err
+         echo "#INFO File $OUTDIR/$FNAME.s contains amdgcn assembly"
+      fi
    fi
 
 else 
