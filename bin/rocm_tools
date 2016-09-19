@@ -7,7 +7,7 @@
 #  TODO: Add Python, boost,  Kokkos, HcBlas, HcSparse
 #  Please contact Greg if you want your HSA tool added to this list
 #
-PROGVERSION=1.2.2
+PROGVERSION=1.2.3
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -54,7 +54,8 @@ function usage(){
 
    Usage: rocm_tools [ options ] 
 
-   Options without values:
+   Options:
+    -rpm          Query for rpm's instead of debian packages
     -h            Print this help message
     -v            Print version of rocm_tools
     -r            Add reference file location information
@@ -104,6 +105,7 @@ while [ $# -gt 0 ] ; do
       --version) 	version ;; 
       --no-headers) 	NOHEADERS=true;; 
       -r) 	        PRINTREF=true;; 
+      -rpm) 	        USE_RPM=true;; 
       -c) 	        COMMERCIAL=true;; 
       -limited)         LIMITED=true;; 
       -a) 	        PRINTALL=true;; 
@@ -118,6 +120,12 @@ done
 LASTARG=$1
 shift
 [ ! $NOHEADERS ] && HEADERS=true
+
+if [ $USE_RPM ] ; then 
+   QCMD="rpm -iq"
+else 
+   QCMD="dpkg-query -s"
+fi
 
 hsatls_name="rocm_tools script"
 hsatls_ver=$PROGVERSION
@@ -160,16 +168,16 @@ fi
 
 hrt_dpkg_name=hsa-rocr-dev
 hsartm_name="HSA Runtime"
-dpkg-query -s hsa-rocr-dev 2>/dev/null >/dev/null
+$QCMD hsa-rocr-dev 2>/dev/null >/dev/null
 rc=$?
 if [ $rc != 0 ] ; then 
    hrt_dpkg_name=hsa-rocr-dev
-   dpkg-query -s  hsa-rocr-dev 2>/dev/null >/dev/null
+   $QCMD  hsa-rocr-dev 2>/dev/null >/dev/null
    rc=$?
 fi
 if [ $rc == 0 ] ; then 
 #  Fixme - should be using hsainfo for this
-   hsartm_ver=`dpkg-query -s  $hrt_dpkg_name | grep Version | cut -d" " -f2`
+   hsartm_ver=`$QCMD  $hrt_dpkg_name | grep Version | cut -d" " -f2`
    fname="/opt/rocm/lib/libhsa-runtime64.so"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    hsartm_date="$day"
@@ -207,10 +215,10 @@ fi
 fi
 
 llvmlc_name="amdllvm"
-dpkg-query -s amdllvm 2>/dev/null >/dev/null
+$QCMD amdllvm 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
    fname="/opt/amd/llvm/bin/llc"
-   llvmlc_ver=`dpkg-query -s amdllvm | grep Version | cut -d" " -f2`
+   llvmlc_ver=`$QCMD amdllvm | grep Version | cut -d" " -f2`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    llvmlc_date="$day "
    llvmlc_loc=$fname
@@ -220,9 +228,9 @@ else
 fi
 
 llvmbe_name="HIP"
-dpkg-query -s hip_base 2>/dev/null >/dev/null
+$QCMD hip_base 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   llvmbe_ver=`dpkg-query -s hip_base | grep Version | cut -d" " -f2`
+   llvmbe_ver=`$QCMD hip_base | grep Version | cut -d" " -f2`
    fname="/opt/rocm/hip/bin/hipcc"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    llvmbe_date="$day "
@@ -266,9 +274,9 @@ else
 fi
 
 gcchsa_name="Experimental rocmgcc6"
-dpkg-query -s rocmgcc6 2>/dev/null >/dev/null
+$QCMD rocmgcc6 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   gcchsa_ver=`dpkg-query -s rocmgcc6 | grep Version | cut -d" " -f2`
+   gcchsa_ver=`$QCMD rocmgcc6 | grep Version | cut -d" " -f2`
    fname="/opt/rocm/gcc6/bin/gcc"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    gcchsa_date="$day"
@@ -279,9 +287,9 @@ else
 fi
 
 rocsmi_name="ROCm sys mgmt interface"
-dpkg-query -s rocm-smi 2>/dev/null >/dev/null
+$QCMD rocm-smi 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   rocsmi_ver=`dpkg-query -s rocm-smi | grep Version | cut -d" " -f2`
+   rocsmi_ver=`$QCMD rocm-smi | grep Version | cut -d" " -f2`
    fname="/opt/rocm/bin/rocm-smi"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    rocsmi_date="$day"
@@ -345,9 +353,9 @@ fi
 fi
 
 profil_name="Rocm Profiler"
-dpkg-query -s rocm-profiler 2>/dev/null >/dev/null
+$QCMD rocm-profiler 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   profil_ver=`dpkg-query -s rocm-profiler| grep Version | cut -d" " -f2`
+   profil_ver=`$QCMD rocm-profiler| grep Version | cut -d" " -f2`
    fname="/opt/rocm/profiler/bin/CodeXLGpuProfiler"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    profil_date="$day"
@@ -358,9 +366,9 @@ else
 fi
 
 codexl_name="AMD CodeXL "
-dpkg-query -s codexl 2>/dev/null >/dev/null
+$QCMD codexl 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   codexl_ver=`dpkg-query -s codexl | grep Version | cut -d" " -f2`
+   codexl_ver=`$QCMD codexl | grep Version | cut -d" " -f2`
    fname="/opt/CodeXL_2.1-228/CodeXLGpuProfilerRun"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    codexl_date="$day"
@@ -371,9 +379,9 @@ else
 fi
 
 debugr_name="ROCm debugger"
-dpkg-query -s rocm-gdb 2>/dev/null >/dev/null
+$QCMD rocm-gdb 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   debugr_ver=`dpkg-query -s rocm-gdb | grep Version | cut -d" " -f2`
+   debugr_ver=`$QCMD rocm-gdb | grep Version | cut -d" " -f2`
    fname="/opt/rocm/gdb/bin/x86_64/amd-gdb"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    debugr_date="$day "
@@ -396,9 +404,9 @@ else
 fi
 
 atmitl_name="ATMI"
-dpkg-query -s libatmi-runtime  2>/dev/null >/dev/null
+$QCMD libatmi-runtime  2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   atmitl_ver=`dpkg-query -s rocm-gdb | grep Version | cut -d" " -f2`
+   atmitl_ver=`$QCMD rocm-gdb | grep Version | cut -d" " -f2`
    fname="/opt/rocm/libatmi/lib/libatmi_runtime.so"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    atmitl_date="$day "
