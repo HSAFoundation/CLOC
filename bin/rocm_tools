@@ -121,7 +121,7 @@ LASTARG=$1
 shift
 [ ! $NOHEADERS ] && HEADERS=true
 
-if [ $USE_RPM ] ; then 
+if [ $USE_RPM ] || [ ! -x /usr/bin/dpkg ] ; then 
    QCMD="rpm -iq"
 else 
    QCMD="dpkg-query -s"
@@ -406,7 +406,7 @@ fi
 atmitl_name="ATMI"
 $QCMD libatmi-runtime  2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   atmitl_ver=`$QCMD rocm-gdb | grep Version | cut -d" " -f2`
+   atmitl_ver=`$QCMD libatmi-runtime | grep Version | cut -d" " -f2`
    fname="/opt/rocm/libatmi/lib/libatmi_runtime.so"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    atmitl_date="$day "
