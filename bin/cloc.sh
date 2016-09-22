@@ -240,12 +240,14 @@ if [ $VV ]  ; then
    VERBOSE=true
 fi
 
+BCFILES="$LIBGCN/lib/libamdgcn.$LC_MCPU.bc"
 LINKOPTS="-Xclang -mlink-bitcode-file -Xclang $LIBGCN/lib/libamdgcn.$LC_MCPU.bc"
 INCLUDES="-I ${LIBGCN}/include ${INCLUDES}" 
 
 if [ $EXTRABCLIB ] ; then 
    if [ -f $EXTRABCLIB ] ; then 
-      LINKOPTS="-Xclang -mlink-bitcode-file -Xclang $EXTRABCLIB $LINKOPTS"
+#     EXTRABCFILE will force QP off so LINKOPTS not used.
+      BCFILES="$EXTRABCLIB $BCFILES"
    else
       echo "ERROR: Environment variable EXTRABCLIB is set to $EXTRABCLIB"
       echo "       File $EXTRABCLIB does not exist"
@@ -356,7 +358,7 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
       CLOPTS="-v $CLOPTS"
    fi
 
-   if [ $NOQP ] || [ $GENLL ] || [ $NOSHARED ] ; then 
+   if [ $NOQP ] || [ $GENLL ] || [ $NOSHARED ] || [ $EXTRABCLIB ] ; then 
       quickpath="false"
    else
       quickpath="true"
@@ -381,7 +383,7 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
       fi
 
       [ $VERBOSE ] && echo "#Step:  Link(llvm-link)	bc --> lnkd.bc ..."
-      runcmd "$AMDLLVM/bin/$CMD_LLL $TMPDIR/$FNAME.bc -o $TMPDIR/$FNAME.lnkd.bc" 
+      runcmd "$AMDLLVM/bin/$CMD_LLL $TMPDIR/$FNAME.bc $BCFILES -o $TMPDIR/$FNAME.lnkd.bc" 
 
       if [ $GENLL ] ; then
          [ $VERBOSE ] && echo "#Step:  Disassemble	lnkd.bc --> lnkd.ll ..."

@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.2.2
+PROGVERSION=1.2.3
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -96,6 +96,7 @@ function usage(){
                              <sdir> is directory where snack.sh is found
     -mcpu     <cpu>          Default=`'mymcpu`, Options: kaveri,carrizo,fiji
     -amdllvm  <path>         Default=/opt/amd/llvm or env var AMDLLVM 
+    -I        <include dir>  Provide one directory per -I option for cloc.sh
     -bclib    <bcfile>       Add a bc library for llvm-link
     -libgcn   <path>         Default=/opt/rocm/libamdgcn or env var LIBGCN 
     -opt      <LLVM opt>     Default=2, passed to cloc.sh to build code object
@@ -188,6 +189,7 @@ function getdname(){
 }
 
 #  --------  The main code starts here -----
+INCLUDES=""
 
 #  Argument processing
 while [ $# -gt 0 ] ; do 
@@ -214,6 +216,7 @@ while [ $# -gt 0 ] ; do
       -path)            CLOC_PATH=$2; shift ;;
       -amdllvm)         AMDLLVM=$2; shift ;;
       -bclib)		EXTRABCLIB=$2; shift ;; 
+      -I) 		INCLUDES="$INCLUDES -I $2"; shift ;; 
       -libgcn)          LIBGCN=$2; shift ;;
       -hsart)           HSA_RT=$2; shift ;;
       -m32)		ADDRMODE=32;;
@@ -353,6 +356,9 @@ fi
 if [ $EXTRABCLIB ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -bclib $EXTRABCLIB"
 fi
+if [ "$INCLUDES" != ""  ] ; then
+   OTHERCLOCFLAGS="$OTHERCLOCFLAGS $INCLUDES"
+fi
 if [ $NOQP ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -noqp"
 fi
@@ -489,9 +495,9 @@ fi
 
 if [ $MAKEOBJ ] ; then 
    [ $VERBOSE ] && echo "#Step:  gcc		snackwrap.c + _hsaco.h --> $OUTFILE  ..."
-   runcmd "$CMD_GCC -O$GCCOPT -I$TMPDIR -I$INDIR -I$CLOC_PATH/../include -I$HSA_RT/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
+   runcmd "$CMD_GCC -O$GCCOPT $INCLUDES -I$TMPDIR -I$INDIR -I$CLOC_PATH/../include -I$HSA_RT/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
    if [ $KSTATS == 1 ] ; then 
-      runcmd "$CMD_GCC -o $TMPDIR/kstats -O$GCCOPT -I$TMPDIR -I$INDIR -I$CLOC_PATH/../include -I$HSA_RT/include $OUTDIR/$OUTFILE $TMPDIR/kstats.c -L$HSA_RT/lib -lhsa-runtime64"
+      runcmd "$CMD_GCC -o $TMPDIR/kstats -O$GCCOPT $INCLUDES -I$TMPDIR -I$INDIR -I$CLOC_PATH/../include -I$HSA_RT/include $OUTDIR/$OUTFILE $TMPDIR/kstats.c -L$HSA_RT/lib -lhsa-runtime64"
       runcmd "$TMPDIR/kstats"
    fi 
 

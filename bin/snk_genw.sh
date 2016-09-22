@@ -941,7 +941,8 @@ __SEDCMD=" "
    fi
 
 #  Read the CLF and build a list of kernels and args, one kernel and set of args per line of KARGLIST file
-   cpp $__CLF | sed -e '/__kernel/,/)/!d' |  sed -e ':a;$!N;s/\n/ /;ta;P;D' | sed -e 's/__kernel/\n__kernel/g'  | grep "__kernel" | \
+#  Only looking for kernels so we do not need includes
+   grep -v "\#include" $__CLF | cpp | sed -e '/__kernel/,/)/!d' |  sed -e ':a;$!N;s/\n/ /;ta;P;D' | sed -e 's/__kernel/\n__kernel/g'  | grep "__kernel" | \
    sed -e "s/__kernel//;s/__global//g;s/{//g;s/ \*/\*/g"  | cut -d\) -f1 | sed -e "s/\*/\* /g;s/__restrict__//g" >$__KARGLIST
 
 #  The header and extra-cl files must start empty because lines are incrementally added to end of file

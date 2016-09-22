@@ -1,6 +1,6 @@
 
 ; Function Attrs: alwaysinline
-define i32 @get_local_size(i32) #0 {
+define i32 @get_local_size_ll(i32) #0 {
   %dispatch_ptr = call noalias nonnull dereferenceable(64) i8 addrspace(2)* @llvm.amdgcn.dispatch.ptr()
   %dispatch_ptr_i32 = bitcast i8 addrspace(2)* %dispatch_ptr to i32 addrspace(2)*
   %size_xy_ptr = getelementptr inbounds i32, i32 addrspace(2)* %dispatch_ptr_i32, i64 1
