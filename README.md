@@ -1,4 +1,4 @@
-CLOC - V 1.2.2 
+CLOC - V 1.2.3 
 ==============
 
 CLOC:  CL Offline Compiler
@@ -73,13 +73,14 @@ Software License Agreement.
     -ll       Generate IR for LLVM steps before generating hsaco
     -s        Generate dissassembled gcn from hsaco
     -g        Generate debug information
-    -noqp     No quickpath, Use LLVM IR commands
+    -noqp     No quickpath, Use LLVM toolchain commands
+    -noshared Do not link hsaco as shared object, forces noqp
     -version  Display version of cloc then exit
     -v        Verbose messages
     -n        Dryrun, do nothing, show commands that would execute
     -h        Print this help message
     -k        Keep temporary files
-    -brig     Generate brig  (soon to be deprecated)
+    -brig     Generate brig  (soon to be depracated)
     -hsail    Generate dissassembled hsail (soon to be deprecated)
 
    Options with values:
@@ -87,6 +88,7 @@ Software License Agreement.
     -libgcn  <path>           $LIBGCN or /opt/rocm/libamdgcn  
     -hlcpath <path>           $HLC_PATH or /opt/rocm/hlc3.2/bin  
     -mcpu    <cputype>        Default= value returned by mymcpu
+    -bclib   <bcfile>         Add a bc library for llvm-link
     -clopts  <compiler opts>  Default=" "
     -I       <include dir>    Provide one directory per -I option
     -lkopts  <LLVM link opts> Default=$LIBGCN/lib/libamdgcn.$mcpu.bc
@@ -123,7 +125,9 @@ Software License Agreement.
    Options without values:
     -c        Compile generated source code to create .o file
     -ll       Tell cloc.sh to generate IR for LLVM steps
-    -s        Generate gsn assembly from llc output
+    -noqp     Tell cloc.sh to not use quick path
+    -noshared Tell cloc.sh to not create shared object.
+    -s        Generate gcn assembly (.s) from lld output
     -version  Display version of snack then exit
     -v        Verbose messages
     -vv       Get additional verbose messages from cloc.sh
@@ -141,6 +145,8 @@ Software License Agreement.
                              <sdir> is directory where snack.sh is found
     -mcpu     <cpu>          Default=`'mymcpu`, Options: kaveri,carrizo,fiji
     -amdllvm  <path>         Default=/opt/amd/llvm or env var AMDLLVM 
+    -I        <include dir>  Provide one directory per -I option for cloc.sh
+    -bclib    <bcfile>       Add a bc library for llvm-link
     -libgcn   <path>         Default=/opt/rocm/libamdgcn or env var LIBGCN 
     -opt      <LLVM opt>     Default=2, passed to cloc.sh to build code object
     -gccopt   <gcc opt>      Default=2, gcc optimization for snack wrapper

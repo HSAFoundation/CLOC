@@ -122,9 +122,11 @@ shift
 [ ! $NOHEADERS ] && HEADERS=true
 
 if [ $USE_RPM ] || [ ! -x /usr/bin/dpkg ] ; then 
-   QCMD="rpm -iq"
+   QCMD="rpm -qi"
+   QCMD_OPT="-f7"
 else 
    QCMD="dpkg-query -s"
+   QCMD_OPT="-f2"
 fi
 
 hsatls_name="rocm_tools script"
@@ -155,9 +157,9 @@ linuxm_date="${year}-${month}-${day}"
 linuxm_loc="NA"
 
 amdkfd_name="AMD KFD Kernel Driver"
-amdkfd_ver=`modinfo -F version amdkfd 2>&1 `
+amdkfd_ver=`/sbin/modinfo -F version amdkfd 2>&1 `
 if [ $? == 0 ] ; then 
-   fname=`modinfo -F filename amdkfd`
+   fname=`/sbin/modinfo -F filename amdkfd`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    amdkfd_date="$day"
    amdkfd_loc=$fname
@@ -171,13 +173,13 @@ hsartm_name="HSA Runtime"
 $QCMD hsa-rocr-dev 2>/dev/null >/dev/null
 rc=$?
 if [ $rc != 0 ] ; then 
+#  For now we are looking for the same package name, fixme
    hrt_dpkg_name=hsa-rocr-dev
    $QCMD  hsa-rocr-dev 2>/dev/null >/dev/null
    rc=$?
 fi
 if [ $rc == 0 ] ; then 
-#  Fixme - should be using hsainfo for this
-   hsartm_ver=`$QCMD  $hrt_dpkg_name | grep Version | cut -d" " -f2`
+   hsartm_ver=`$QCMD $hrt_dpkg_name | grep Version | cut -d" " $QCMD_OPT`
    fname="/opt/rocm/lib/libhsa-runtime64.so"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    hsartm_date="$day"
@@ -218,7 +220,7 @@ llvmlc_name="amdllvm"
 $QCMD amdllvm 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
    fname="/opt/amd/llvm/bin/llc"
-   llvmlc_ver=`$QCMD amdllvm | grep Version | cut -d" " -f2`
+   llvmlc_ver=`$QCMD amdllvm | grep Version | cut -d" " $QCMD_OPT`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    llvmlc_date="$day "
    llvmlc_loc=$fname
@@ -230,7 +232,7 @@ fi
 llvmbe_name="HIP"
 $QCMD hip_base 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   llvmbe_ver=`$QCMD hip_base | grep Version | cut -d" " -f2`
+   llvmbe_ver=`$QCMD hip_base | grep Version | cut -d" " $QCMD_OPT`
    fname="/opt/rocm/hip/bin/hipcc"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    llvmbe_date="$day "
@@ -276,7 +278,7 @@ fi
 gcchsa_name="Experimental rocmgcc6"
 $QCMD rocmgcc6 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   gcchsa_ver=`$QCMD rocmgcc6 | grep Version | cut -d" " -f2`
+   gcchsa_ver=`$QCMD rocmgcc6 | grep Version | cut -d" " $QCMD_OPT`
    fname="/opt/rocm/gcc6/bin/gcc"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    gcchsa_date="$day"
@@ -289,7 +291,7 @@ fi
 rocsmi_name="ROCm sys mgmt interface"
 $QCMD rocm-smi 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   rocsmi_ver=`$QCMD rocm-smi | grep Version | cut -d" " -f2`
+   rocsmi_ver=`$QCMD rocm-smi | grep Version | cut -d" " $QCMD_OPT`
    fname="/opt/rocm/bin/rocm-smi"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    rocsmi_date="$day"
@@ -355,7 +357,7 @@ fi
 profil_name="Rocm Profiler"
 $QCMD rocm-profiler 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   profil_ver=`$QCMD rocm-profiler| grep Version | cut -d" " -f2`
+   profil_ver=`$QCMD rocm-profiler| grep Version | cut -d" " $QCMD_OPT`
    fname="/opt/rocm/profiler/bin/CodeXLGpuProfiler"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    profil_date="$day"
@@ -368,7 +370,7 @@ fi
 codexl_name="AMD CodeXL "
 $QCMD codexl 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   codexl_ver=`$QCMD codexl | grep Version | cut -d" " -f2`
+   codexl_ver=`$QCMD codexl | grep Version | cut -d" " $QCMD_OPT`
    fname="/opt/CodeXL_2.1-228/CodeXLGpuProfilerRun"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    codexl_date="$day"
@@ -381,7 +383,7 @@ fi
 debugr_name="ROCm debugger"
 $QCMD rocm-gdb 2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   debugr_ver=`$QCMD rocm-gdb | grep Version | cut -d" " -f2`
+   debugr_ver=`$QCMD rocm-gdb | grep Version | cut -d" " $QCMD_OPT`
    fname="/opt/rocm/gdb/bin/x86_64/amd-gdb"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    debugr_date="$day "
@@ -406,7 +408,7 @@ fi
 atmitl_name="ATMI"
 $QCMD libatmi-runtime  2>/dev/null >/dev/null
 if [ $? == 0 ] ; then 
-   atmitl_ver=`$QCMD libatmi-runtime | grep Version | cut -d" " -f2`
+   atmitl_ver=`$QCMD libatmi-runtime | grep Version | cut -d" " $QCMD_OPT`
    fname="/opt/rocm/libatmi/lib/libatmi_runtime.so"
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
    atmitl_date="$day "
