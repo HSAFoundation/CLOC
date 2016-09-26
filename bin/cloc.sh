@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.2.3
+PROGVERSION=1.2.4
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -286,7 +286,7 @@ fi
 INDIR=$(getdname $LASTARG)
 CLNAME=${LASTARG##*/}
 # FNAME has the .cl extension removed, used for naming intermediate filenames
-FNAME=`echo "$CLNAME" | cut -d'.' -f1`
+FNAME=${CLNAME%.*}
 
 if [ -z $OUTFILE ] ; then 
 #  Output file not specified so use input directory
@@ -367,7 +367,7 @@ if [ ! $GEN_IL ] && [ ! $GEN_BRIG ] ; then
    if [ "$quickpath" == "true" ] ; then 
 
       [ $VERBOSE ] && echo "#Step:  Compile cl	cl --> hsaco ..."
-      runcmd "$AMDLLVM/bin/$CMD_CLC -o $OUTDIR/$FNAME.hsaco $INDIR/$CLNAME"
+      runcmd "$AMDLLVM/bin/$CMD_CLC -o $OUTDIR/$OUTFILE $INDIR/$CLNAME"
 
    else 
       # Run 4 steps, clang,link,opt,llc
