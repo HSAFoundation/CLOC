@@ -21,8 +21,18 @@ if [ "$1" == "cpp" ] ; then
    echo g++ -o HelloWorld hw.o HelloWorld.cpp -L/opt/rocm/lib -lhsa-runtime64  
    g++ -o HelloWorld hw.o HelloWorld.cpp -L/opt/rocm/lib -lhsa-runtime64  
 elif [ "$1" == "f" ] ; then 
-   echo f95 -cpp -fcray-pointer -o HelloWorld hw.o HelloWorld.f -L/opt/rocm/lib -lhsa-runtime64  
-   f95 -cpp -fcray-pointer -o HelloWorld hw.o HelloWorld.f -L/opt/rocm/lib -lhsa-runtime64  
+   if [ -f /usr/bin/mymcpu ] ; then 
+      mymcpu=`/usr/bin/mymcpu`
+   else 
+      mymcpu=${mymcpu:-fiji}
+   fi
+   if [ "$mymcpu" == "fiji" ] ; then 
+      malloc_trigger="-DGLOBALMALLOC"
+   else
+      malloc_trigger=""
+   fi
+   echo f95 -cpp -fcray-pointer $malloc_trigger -o HelloWorld hw.o HelloWorld.f -L/opt/rocm/lib -lhsa-runtime64 
+   f95 -cpp -fcray-pointer $malloc_trigger -o HelloWorld hw.o HelloWorld.f -L/opt/rocm/lib -lhsa-runtime64 
 else
    echo gcc -o HelloWorld hw.o HelloWorld.c -L/opt/rocm/lib -lhsa-runtime64 
    gcc -o HelloWorld hw.o HelloWorld.c -L/opt/rocm/lib -lhsa-runtime64 

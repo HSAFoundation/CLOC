@@ -1,4 +1,4 @@
-CLOC - V 1.2.3 
+CLOC - V 1.3.1
 ==============
 
 CLOC:  CL Offline Compiler
@@ -63,9 +63,11 @@ Software License Agreement.
 ## The cloc.sh command 
 
 ```
-   cloc.sh: Compile a cl file into an HSA Code object file (.hsaco)  
+   cloc.sh: Compile a cl or cu file into an HSA Code object file (.hsaco)  
             using the LLVM Ligntning Compiler. An hsaco file contains 
             the amdgpu isa that can be loaded by the HSA Runtime.
+            As of amdcloc 1.3.1, use of cuda is only experimental.  
+            Generated kernels from cuda will not execute. 
 
    Usage: cloc.sh [ options ] filename.cl
 
@@ -73,37 +75,42 @@ Software License Agreement.
     -ll       Generate IR for LLVM steps before generating hsaco
     -s        Generate dissassembled gcn from hsaco
     -g        Generate debug information
-    -noqp     No quickpath, Use LLVM toolchain commands
+    -noqp     No quickpath, Use LLVM commands instead of clang driver
     -noshared Do not link hsaco as shared object, forces noqp
     -version  Display version of cloc then exit
     -v        Verbose messages
     -n        Dryrun, do nothing, show commands that would execute
     -h        Print this help message
     -k        Keep temporary files
-    -brig     Generate brig  (soon to be depracated)
-    -hsail    Generate dissassembled hsail (soon to be deprecated)
+    -brig     Generate brig instead of hsaco (deprecated)
+    -hsail    Generate dissassembled hsail for brig  (deprecated)
 
    Options with values:
-    -amdllvm <path>           $AMDLLVM or /opt/amd/llvm
-    -libgcn  <path>           $LIBGCN or /opt/rocm/libamdgcn  
-    -hlcpath <path>           $HLC_PATH or /opt/rocm/hlc3.2/bin  
-    -mcpu    <cputype>        Default= value returned by mymcpu
-    -bclib   <bcfile>         Add a bc library for llvm-link
-    -clopts  <compiler opts>  Default=" "
-    -I       <include dir>    Provide one directory per -I option
-    -lkopts  <LLVM link opts> Default=$LIBGCN/lib/libamdgcn.$mcpu.bc
-    -hsaillib <fname>         Filename of hsail library.(soon to be deprecated)
-    -opt     <LLVM opt>       LLVM optimization level
-    -o       <outfilename>    Default=<filename>.<ft> ft=brig or hsail
-    -t       <tdir>           Default=/tmp/cloc-tmp-$$, Temp dir for files
-
+    -amdllvm   <path>           $AMDLLVM or /opt/amd/llvm
+    -libgcn    <path>           $LIBGCN or /opt/rocm/libamdgcn  
+    -hlcpath   <path>           $HLC_PATH or /opt/rocm/hlc3.2/bin  
+    -cuda-path <path>           $CUDA_PATH or /usr/local/cuda
+    -mcpu      <cputype>        Default= value returned by mymcpu
+    -bclib     <bcfile>         Add a bc library for llvm-link
+    -clopts    <compiler opts>  Addtional options for cl frontend
+    -cuopts    <compiler opts>  Additonal options for cu frontend
+    -I         <include dir>    Provide one directory per -I option
+    -lkopts    <LLVM link opts> Default=$LIBGCN/lib/libamdgcn.$mcpu.bc
+    -hsaillib  <fname>          Filename of hsail library. (deprecated)
+    -opt       <LLVM opt>       LLVM optimization level
+    -o         <outfilename>    Default=<filename>.<ft> ft=brig or hsail
+    -t         <tdir>           Temporary directory or intermediate files
+                                Default=/tmp/cloc-tmp-$$
    Examples:
-    cloc.sh my.cl             /* create my.hsaco                    */
+    cloc.sh my.cl             /* creates my.hsaco                    */
+    cloc.sh whybother.cu      /* creates whybother.hsaco             */
 
-   You may set these environment variables 
-   LLVMOPT, HLC_PATH,AMDLLVM,LIBGCN,LC_MCPU, CLOPTS, or LKOPTS 
-   instead of providing these respective command line options 
-   -opt, -hlcpath, -amdllvm, -libgcn, -mcpu,  -clopts, or -lkopts 
+   Note: Instead of providing these command line options:
+   -opt,-hlcpath,-amdllvm,-libgcn,-cuda-path,-mcpu,-clopts, or -lkopts 
+
+   You may set these environment variables, respectively:
+   LLVMOPT,HLC_PATH,AMDLLVM,LIBGCN,CUDA_PATH,LC_MCPU,CLOPTS, or LKOPTS 
+
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.
@@ -116,7 +123,7 @@ Software License Agreement.
 ```
    snack: Generate host-callable "snack" functions for GPU kernels.
           Snack generates the source code and headers for each kernel 
-          in the input filename.cl file.  The -c option will compile 
+          in an OpenCL cl or CUDA cu file.  The -c option will compile 
           the source with gcc so you can link with your host application.
           Host applicaton requires no API to use snack functions.
 
@@ -141,13 +148,14 @@ Software License Agreement.
               bit mode
 
    Options with values:
-    -path     <path>         $CLOC_PATH or <sdir> if CLOC_PATH not set
-                             <sdir> is directory where snack.sh is found
-    -mcpu     <cpu>          Default=`'mymcpu`, Options: kaveri,carrizo,fiji
-    -amdllvm  <path>         Default=/opt/amd/llvm or env var AMDLLVM 
+    -path      <path>         $CLOC_PATH or <sdir> if CLOC_PATH not set
+                              <sdir> is directory where snack.sh is found
+    -mcpu      <cpu>          Default=`'mymcpu`, Options: kaveri,carrizo,fiji
+    -amdllvm   <path>         Default=/opt/amd/llvm or env var AMDLLVM 
+    -libgcn    <path>         Default=/opt/rocm/libamdgcn or env var LIBGCN 
+    -cuda-path <path>         $CUDA_PATH or /usr/local/cuda
     -I        <include dir>  Provide one directory per -I option for cloc.sh
     -bclib    <bcfile>       Add a bc library for llvm-link
-    -libgcn   <path>         Default=/opt/rocm/libamdgcn or env var LIBGCN 
     -opt      <LLVM opt>     Default=2, passed to cloc.sh to build code object
     -gccopt   <gcc opt>      Default=2, gcc optimization for snack wrapper
     -t        <tempdir>      Default=/tmp/snk_$$, Temp dir for files
@@ -159,10 +167,15 @@ Software License Agreement.
    Examples:
     snack.sh my.cl              /* create my.snackwrap.c and my.h    */
     snack.sh -c my.cl           /* gcc compile to create  my.o       */
+    snack.sh -c whybother.cl    /* compile to create  whybother.o    */
     snack.sh -t /tmp/foo my.cl  /* will automatically set -k         */
 
-   You may set environment variables CLOC_PATH, HSA_RT, AMDLLVM, LIBGCN
-   instead of providing options -path, -hsart, -amdllvm, -libgcn respectively
+   Instead of providing these command line options:
+   -path,-hsart,-amdllvm,-libgcn,-cuda-path,-mcpu
+
+   You may set these environment variables respectively:
+   CLOC_PATH,HSA_RT,AMDLLVM,LIBGCN,CUDA_PATH,LC_MCPU
+
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.

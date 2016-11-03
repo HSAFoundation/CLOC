@@ -895,6 +895,10 @@ function parse_arg() {
 #  Inputs 
 __SN=$1
 __CLF=$2
+filetype=${__CLF##**\.}
+if [ "$filetype" == "cu" ] ; then 
+    GPUCC=true
+fi
 __PROGV=$3
 #  Work space
 __TMPD=$4
@@ -942,8 +946,13 @@ __SEDCMD=" "
 
 #  Read the CLF and build a list of kernels and args, one kernel and set of args per line of KARGLIST file
 #  Only looking for kernels so we do not need includes
-   grep -v "\#include" $__CLF | cpp | sed -e '/__kernel/,/)/!d' |  sed -e ':a;$!N;s/\n/ /;ta;P;D' | sed -e 's/__kernel/\n__kernel/g'  | grep "__kernel" | \
-   sed -e "s/__kernel//;s/__global//g;s/{//g;s/ \*/\*/g"  | cut -d\) -f1 | sed -e "s/\*/\* /g;s/__restrict__//g" >$__KARGLIST
+   if [ $GPUCC ] ; then 
+      grep -v "\#include" $__CLF | cpp | sed -e '/__global__/,/)/!d' |  sed -e ':a;$!N;s/\n/ /;ta;P;D' | sed -e 's/__global__/\n__global__/g'  | grep "__global__" | \
+      sed -e "s/__global__//;s/__device__//g;s/{//g;s/ \*/\*/g"  | cut -d\) -f1 | sed -e "s/\*/\* /g;s/__restrict__//g" >$__KARGLIST
+   else
+      grep -v "\#include" $__CLF | cpp | sed -e '/__kernel/,/)/!d' |  sed -e ':a;$!N;s/\n/ /;ta;P;D' | sed -e 's/__kernel/\n__kernel/g'  | grep "__kernel" | \
+      sed -e "s/__kernel//;s/__global//g;s/{//g;s/ \*/\*/g"  | cut -d\) -f1 | sed -e "s/\*/\* /g;s/__restrict__//g" >$__KARGLIST
+   fi
 
 #  The header and extra-cl files must start empty because lines are incrementally added to end of file
    if [ -f $__EXTRACL ] ; then rm -f $__EXTRACL ; fi

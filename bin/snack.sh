@@ -22,7 +22,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.2.3
+PROGVERSION=1.3.1
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -67,7 +67,7 @@ function usage(){
 
    snack: Generate host-callable "snack" functions for GPU kernels.
           Snack generates the source code and headers for each kernel 
-          in the input filename.cl file.  The -c option will compile 
+          in an OpenCL cl or CUDA cu file.  The -c option will compile 
           the source with gcc so you can link with your host application.
           Host applicaton requires no API to use snack functions.
 
@@ -92,13 +92,14 @@ function usage(){
               bit mode
 
    Options with values:
-    -path     <path>         $CLOC_PATH or <sdir> if CLOC_PATH not set
-                             <sdir> is directory where snack.sh is found
-    -mcpu     <cpu>          Default=`'mymcpu`, Options: kaveri,carrizo,fiji
-    -amdllvm  <path>         Default=/opt/amd/llvm or env var AMDLLVM 
+    -path      <path>         $CLOC_PATH or <sdir> if CLOC_PATH not set
+                              <sdir> is directory where snack.sh is found
+    -mcpu      <cpu>          Default=`'mymcpu`, Options: kaveri,carrizo,fiji
+    -amdllvm   <path>         Default=/opt/amd/llvm or env var AMDLLVM 
+    -libgcn    <path>         Default=/opt/rocm/libamdgcn or env var LIBGCN 
+    -cuda-path <path>         $CUDA_PATH or /usr/local/cuda
     -I        <include dir>  Provide one directory per -I option for cloc.sh
     -bclib    <bcfile>       Add a bc library for llvm-link
-    -libgcn   <path>         Default=/opt/rocm/libamdgcn or env var LIBGCN 
     -opt      <LLVM opt>     Default=2, passed to cloc.sh to build code object
     -gccopt   <gcc opt>      Default=2, gcc optimization for snack wrapper
     -t        <tempdir>      Default=/tmp/snk_$$, Temp dir for files
@@ -110,10 +111,15 @@ function usage(){
    Examples:
     snack.sh my.cl              /* create my.snackwrap.c and my.h    */
     snack.sh -c my.cl           /* gcc compile to create  my.o       */
+    snack.sh -c whybother.cl    /* compile to create  whybother.o    */
     snack.sh -t /tmp/foo my.cl  /* will automatically set -k         */
 
-   You may set environment variables CLOC_PATH, HSA_RT, AMDLLVM, LIBGCN
-   instead of providing options -path, -hsart, -amdllvm, -libgcn respectively
+   Instead of providing these command line options:
+   -path,-hsart,-amdllvm,-libgcn,-cuda-path,-mcpu
+
+   You may set these environment variables respectively:
+   CLOC_PATH,HSA_RT,AMDLLVM,LIBGCN,CUDA_PATH,LC_MCPU
+
    Command line options will take precedence over environment variables. 
 
    Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.
@@ -221,7 +227,7 @@ while [ $# -gt 0 ] ; do
       -hsart)           HSA_RT=$2; shift ;;
       -m32)		ADDRMODE=32;;
       -mcpu)            MCPU=$2; shift ;;
-
+      -cuda-path)       SET_CUDA_PATH=$2; shift ;;
       -g) 		GEN_DEBUG=true;; 
       -hsaillib)        HSAILLIB=$2; shift ;; 
       -hsail) 		GEN_IL=true;; 
@@ -266,13 +272,13 @@ CLOC_PATH=${CLOC_PATH:-$sdir}
 #  Set Default values
 GCCOPT=${GCCOPT:-3}
 LLVMOPT=${LLVMOPT:-2}
-HSA_RT=${HSA_RT:-/opt/rocm/hsa}
+HSA_RT=${HSA_RT:-/opt/rocm}
 
 FORTRAN=${FORTRAN:-0};
 NOGLOBFUNS=${NOGLOBFUNS:-0};
 KSTATS=${KSTATS:-0};
 ADDRMODE=${ADDRMODE:-64};
-FOPTION=${FOPTION:-"NONE"}
+FOPTION=${FOPTION:-NONE}
 
 RUNDATE=`date`
 
@@ -289,12 +295,39 @@ if [ "$filetype" == "hsail" ] || [ $GEN_IL ] || [ $GEN_BRIG ] || [ $HSAILLIB ] |
 fi 
 
 if [ "$filetype" != "cl" ]  ; then 
-   echo "ERROR:  $0 requires one argument with file type cl "
-   exit $DEADRC 
+   if [ "$filetype" != "cu" ]  ; then 
+      echo "ERROR:  $0 requires one argument with file type cl "
+      exit $DEADRC 
+   else 
+      GPUCC=true
+   fi
+fi
+
+if [ $GPUCC ] ; then 
+   if [ $SET_CUDA_PATH ] ; then 
+      if [ ! -d $SET_CUDA_PATH ] ; then 
+         echo "ERROR:  No CUDA_PATH directory at $SET_CUDA_PATH "
+         exit $DEADRC
+      fi
+   else 
+      CUDA_PATH=${CUDA_PATH:-/usr/local/cuda}
+      if [ ! -d $CUDA_PATH ] ; then 
+         echo "ERROR:  No CUDA_PATH directory at $CUDA_PATH "
+         exit $DEADRC
+      fi
+   fi
+else
+   if [ $SET_CUDA_PATH ] ; then 
+      echo "WARNING:  Option -cuda-path ignored for cl files"
+   fi
 fi
 
 if [ ! -e "$LASTARG" ]  ; then 
    echo "ERROR:  The file $LASTARG does not exist."
+   exit $DEADRC
+fi
+if [ ! $MAKEOBJ ] && [ $KSTATS == 1  ] ; then 
+   echo "ERROR:  You must specify -c option with -kstats"
    exit $DEADRC
 fi
 if [ ! -d $CLOC_PATH ] ; then 
@@ -308,8 +341,8 @@ if [ $MAKEOBJ ] && [ ! -d "$HSA_RT/lib" ] ; then
    echo "        Set env variable HSA_RT or use -hsart option"
    exit $DEADRC
 fi
-if [ $MAKEOBJ ] && [ ! -f $HSA_RT/include/hsa.h ] ; then 
-   echo "ERROR:  Missing $HSA_RT/include/hsa.h"
+if [ $MAKEOBJ ] && [ ! -f $HSA_RT/include/hsa/hsa.h ] ; then 
+   echo "ERROR:  Missing $HSA_RT/include/hsa/hsa.h"
    echo "        snack.sh requires HSA includes"
    exit $DEADRC
 fi
@@ -323,9 +356,9 @@ fi
 
 # Parse LASTARG for directory, filename, and symbolname
 INDIR=$(getdname $LASTARG)
-CLNAME=${LASTARG##*/}
+FILENAME=${LASTARG##*/}
 # FNAME has the .cl extension removed, used for symbolname and intermediate filenames
-FNAME=`echo "$CLNAME" | cut -d'.' -f1`
+FNAME=`echo "$FILENAME" | cut -d'.' -f1`
 SYMBOLNAME=${SYMBOLNAME:-$FNAME}
 HSACO_HFILE="${SYMBOLNAME}_hsaco.h"
 OTHERCLOCFLAGS=" " 
@@ -376,6 +409,9 @@ if [ $LIBGCN ] ; then
 fi
 if [ $MCPU ] ; then
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -mcpu $MCPU"
+fi
+if [ $GPUCC ] && [ $SET_CUDA_PATH ] ; then
+   OTHERCLOCFLAGS="$OTHERCLOCFLAGS -cuda-path $SET_CUDA_PATH"
 fi
 
 if [ $GEN_DEBUG ] ; then
@@ -431,7 +467,7 @@ fi
 if [ $VERBOSE ] ; then 
    echo "#Info:  Version:	snack.sh $PROGVERSION" 
    echo "#Info:  Input File:	"
-   echo "#           CL file:	   $INDIR/$CLNAME"
+   echo "#           CL file:	   $INDIR/$FILENAME"
    echo "#Info:  Output Files:"
    if [ $MAKEOBJ ] ; then 
       echo "#           Object:	   $OUTDIR/$OUTFILE"
@@ -450,8 +486,13 @@ fi
 
 rc=0
 
-[ $VERBOSE ] && echo "#Step:  genw  		cl --> $FNAME.snackwrap.c + $FNAME.h ..."
-runcmd "$CLOC_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$CLNAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE "\"$FOPTION\"""
+if [ $GPUCC ] ; then 
+   [ $VERBOSE ] && echo "#Step:  genw  		cu --> $FNAME.snackwrap.c + $FNAME.h ..."
+   runcmd "$CLOC_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$FILENAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cu $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE $FOPTION"
+else 
+   [ $VERBOSE ] && echo "#Step:  genw  		cl --> $FNAME.snackwrap.c + $FNAME.h ..."
+   runcmd "$CLOC_PATH/snk_genw.sh $SYMBOLNAME $INDIR/$FILENAME $PROGVERSION $TMPDIR $CWRAPFILE $OUTDIR/$FNAME.h $TMPDIR/updated.cl $FORTRAN $NOGLOBFUNS $KSTATS $ADDRMODE $FOPTION"
+fi
 #  Call cloc to generate hsaco
 if [ $CLOCVERBOSE ] ; then 
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -v"
@@ -459,10 +500,17 @@ fi
 if [ "$HSAILLIB" != "" ] ; then 
    OTHERCLOCFLAGS="$OTHERCLOCFLAGS -hsaillib $HSAILLIB"
 fi
-[ $VERBOSE ] && echo "#Step:  cloc.sh		cl --> hsaco ..."
-[ $CLOCVERBOSE ] && echo " " && echo "#------ Start cloc.sh output ------"
-runcmd "$CLOC_PATH/cloc.sh -t $TMPDIR -k -clopts "-I$INDIR" $OTHERCLOCFLAGS $TMPDIR/updated.cl"
-[ $CLOCVERBOSE ] && echo "#------ End cloc.sh output ------" && echo " " 
+if [ $GPUCC ] ; then 
+   [ $VERBOSE ] && echo "#Step:  cloc.sh		cu --> hsaco ..."
+   [ $CLOCVERBOSE ] && echo " " && echo "#------ Start cloc.sh output ------"
+   runcmd "$CLOC_PATH/cloc.sh -t $TMPDIR -k -clopts "-I$INDIR" $OTHERCLOCFLAGS $TMPDIR/updated.cu"
+   [ $CLOCVERBOSE ] && echo "#------ End cloc.sh output ------" && echo " " 
+else
+   [ $VERBOSE ] && echo "#Step:  cloc.sh		cl --> hsaco ..."
+   [ $CLOCVERBOSE ] && echo " " && echo "#------ Start cloc.sh output ------"
+   runcmd "$CLOC_PATH/cloc.sh -t $TMPDIR -k -clopts "-I$INDIR" $OTHERCLOCFLAGS $TMPDIR/updated.cl"
+   [ $CLOCVERBOSE ] && echo "#------ End cloc.sh output ------" && echo " " 
+fi
 
 if [ $GENLL ] ; then
    cp -p $TMPDIR/updated.ll $OUTDIR/$FNAME.ll
@@ -495,9 +543,9 @@ fi
 
 if [ $MAKEOBJ ] ; then 
    [ $VERBOSE ] && echo "#Step:  gcc		snackwrap.c + _hsaco.h --> $OUTFILE  ..."
-   runcmd "$CMD_GCC -O$GCCOPT $INCLUDES -I$TMPDIR -I$INDIR -I$CLOC_PATH/../include -I$HSA_RT/include -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
+   runcmd "$CMD_GCC -O$GCCOPT $INCLUDES -I$TMPDIR -I$INDIR -I$CLOC_PATH/../include -I$HSA_RT/include/hsa -o $OUTDIR/$OUTFILE -c $CWRAPFILE"
    if [ $KSTATS == 1 ] ; then 
-      runcmd "$CMD_GCC -o $TMPDIR/kstats -O$GCCOPT $INCLUDES -I$TMPDIR -I$INDIR -I$CLOC_PATH/../include -I$HSA_RT/include $OUTDIR/$OUTFILE $TMPDIR/kstats.c -L$HSA_RT/lib -lhsa-runtime64"
+      runcmd "$CMD_GCC -o $TMPDIR/kstats -O$GCCOPT $INCLUDES -I$TMPDIR -I$INDIR -I$CLOC_PATH/../include -I$HSA_RT/include/hsa $OUTDIR/$OUTFILE $TMPDIR/kstats.c -L$HSA_RT/lib -lhsa-runtime64"
       runcmd "$TMPDIR/kstats"
    fi 
 

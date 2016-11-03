@@ -1,0 +1,5 @@
+llvm.nvvm.barrier0                 llvm.amdgcn.s.barrier
+llvm.nvvm.read.ptx.sreg.ctaid.x    llvm.amdgcn.workgroup.id.x
+llvm.nvvm.read.ptx.sreg.tid.x      llvm.amdgcn.workitem.id.x 
+llvm.nvvm.read.ptx.sreg.nctaid.x   llvm_amdgcn_read_num_groups_x
+llvm.nvvm.read.ptx.sreg.ntid.x     llvm_amdgcn_read_local_size_x 
