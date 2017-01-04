@@ -1,4 +1,4 @@
-CLOC - V 1.3.1
+CLOC - V 1.3.2
 ==============
 
 CLOC:  CL Offline Compiler

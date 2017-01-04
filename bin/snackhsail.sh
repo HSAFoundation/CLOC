@@ -26,7 +26,7 @@
 #  It does call the new cloc.sh but with the -brig flag
 #  The maintainence of this version is stopping.
 #
-PROGVERSION=1.2.2
+PROGVERSION=1.3.2
 #
 # Copyright (c) 2015 ADVANCED MICRO DEVICES, INC.  Patent pending.
 # 
@@ -228,7 +228,7 @@ HLC_PATH=${HLC_PATH:-/opt/rocm/hlc3.2/bin}
 GCCOPT=${GCCOPT:-3}
 LLVMOPT=${LLVMOPT:-2}
 HSA_RT=${HSA_RT:-/opt/rocm/hsa}
-CMD_BRI=${CMD_BRI:-HSAILasm }
+CMD_BRI=${CMD_BRI:-/opt/rocm/hlc3.2/bin/HSAILasm }
 
 FORTRAN=${FORTRAN:-0};
 NOGLOBFUNS=${NOGLOBFUNS:-0};
@@ -354,8 +354,8 @@ if [ ! -d $TMPDIR ] && [ ! $DRYRUN ] ; then
    echo "ERROR:  Directory $TMPDIR does not exist or could not be created"
    exit $DEADRC
 fi 
-if [ ! -e /opt/rocm/hcc-hsail/HSAILasm/HSAILasm ] ; then 
-   echo "ERROR:  Missing HSAILasm "
+if [ ! -e $CMD_BRIG ] ; then 
+   echo "ERROR:  Missing HSAILasm, Please install hlc3.2 "
    exit $DEADRC
 fi 
 if [ ! -d $OUTDIR ] && [ ! $DRYRUN ]  ; then 
@@ -436,13 +436,13 @@ if [ $HSAIL_OPT_STEP2 ] ; then
    CWRAPFILE=$INDIR/$FNAME.snackwrap.c
    [ $VERBOSE ] && echo "#Step:  gcc		hsail --> brig  ..."
    if [ $DRYRUN ] ; then
-      echo "/opt/rocm/hcc-hsail/HSAILasm/$CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail"
+      echo "$CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail"
    else
-      /opt/rocm/hcc-hsail/HSAILasm/$CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail
+      $CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail
       rc=$?
       if [ $rc != 0 ] ; then 
          echo "ERROR:  The following command failed with return code $rc."
-         echo "        /opt/rocm/hcc-hsail/HSAILasm/$CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail"
+         echo "        $CMD_BRI -o $BRIGDIR/$BRIGNAME $INDIR/$FNAME.hsail"
          do_err $rc
       fi
    fi

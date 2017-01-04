@@ -8,7 +8,7 @@
 #
 #  Written by Greg Rodgers  Gregory.Rodgers@amd.com
 #
-PROGVERSION=1.3.1
+PROGVERSION=1.3.2
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -249,7 +249,8 @@ AMDLLVM=${AMDLLVM:-/opt/amd/llvm}
 LIBGCN=${LIBGCN:-/opt/rocm/libamdgcn}
 HLC_PATH=${HLC_PATH:-/opt/rocm/hlc3.2/bin}
 CUDA_PATH=${CUDA_PATH:-/usr/local/cuda}
-CUOPTS=${CUOPTS:--S -emit-llvm -DGPUCC_AMDGCN -Wno-format-security --cuda-device-only --cuda-gpu-arch=sm_35 --cuda-path=$CUDA_PATH -include $AMDLLVM/lib/clang/4.0.0/include/cuda_builtin_vars.h}
+#CUOPTS=${CUOPTS:--S -emit-llvm -DGPUCC_AMDGCN -Wno-format-security --cuda-device-only --cuda-gpu-arch=sm_35 --cuda-path=$CUDA_PATH -include $AMDLLVM/lib/clang/4.0.0/include/cuda_builtin_vars.h}
+CUOPTS=${CUOPTS:--S -emit-llvm -DGPUCC_AMDGCN -Wno-format-security --cuda-device-only --cuda-gpu-arch=sm_35 --cuda-path=$CUDA_PATH -include $AMDLLVM/lib/clang/4.0.0/include/__clang_cuda_builtin_vars.h}
 
 if [ ! $LC_MCPU ] ; then 
    LC_MCPU=`mymcpu`

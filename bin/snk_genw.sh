@@ -452,7 +452,7 @@ status_t SNACK_Init(){
     HSA_FC = 1;
 
     /* Initialize HSA queues to zero length */
-    Sync_CommandQ_Len = 0 ;  
+    snk_Sync_CommandQ_Len = 0 ;  
     for( i=0 ; i<SNK_MAX_STREAMS ; i++ ) Stream_CommandQ_Len[i]=0;
 
     err = hsa_init();
@@ -492,6 +492,27 @@ extern void*  malloc_global(size_t sz) {
 }
 extern void* malloc_global_(size_t sz) {return malloc_global(sz);}
 extern void free_global_(void* free_pointer) {free_global(free_pointer);}
+
+void SNACK_Stop(){
+    hsa_status_t err;
+    /* err = hsa_memory_free(kernarg_address); */
+    err= hsa_executable_destroy(*snk_current_Executable);
+    err= hsa_code_object_destroy(*snk_current_code_object);
+    if (snk_Sync_CommandQ_Len != 0) {
+      err= hsa_queue_destroy(snk_Sync_CommandQ);
+      snk_Sync_CommandQ_Len = 0;
+    }
+    int i;
+    for( i=0 ; i<SNK_MAX_STREAMS ; i++ ) {
+       if(Stream_CommandQ_Len[i] != 0) {
+         err= hsa_queue_destroy( Stream_CommandQ[i]);
+         Stream_CommandQ_Len[i]=0;
+       }
+    }
+}
+void snack_stop_(){
+   SNACK_Stop();
+}
 
 /* End of generated global functions */
 
@@ -560,8 +581,10 @@ hsa_code_object_t                __CN__code_object ;
 int                              __CN__FC = 0; 
 
 /* Global variables */
-hsa_queue_t*                     Sync_CommandQ;
-static unsigned int              Sync_CommandQ_Len; 
+hsa_queue_t*                     snk_Sync_CommandQ;
+static unsigned int              snk_Sync_CommandQ_Len; 
+hsa_executable_t*                snk_current_Executable;
+hsa_code_object_t*               snk_current_code_object;
 
 #include "_CN__hsaco.h" 
 
@@ -614,10 +637,12 @@ status_t __CN__InitContext(){
     memcpy(raw_code_object,__CN__HSA_CodeObjMem,__CN__HSA_CodeObjMemSz); 
     err = hsa_code_object_deserialize(raw_code_object, __CN__HSA_CodeObjMemSz, NULL, &__CN__code_object);
     ErrorCheck(Deserialize code object , err);
+    snk_current_code_object = &__CN__code_object;
 
     /* Create the empty executable.  */
     err = hsa_executable_create(HSA_PROFILE_FULL, HSA_EXECUTABLE_STATE_UNFROZEN, NULL, &__CN__Executable);
     ErrorCheck(Create the executable, err);
+    snk_current_Executable = &__CN__Executable;
 
     /* Load the code object.  */
     err = hsa_executable_load_code_object(__CN__Executable, __CN__Agent, __CN__code_object, NULL);
@@ -635,27 +660,6 @@ status_t __CN__InitContext(){
 
     return STATUS_SUCCESS;
 } /* end of __CN__InitContext */
-
-void SNACK_Stop(){
-    hsa_status_t err;
-    /* err = hsa_memory_free(kernarg_address); */
-    err= hsa_executable_destroy(__CN__Executable);
-    err= hsa_code_object_destroy(__CN__code_object);
-    if (Sync_CommandQ_Len != 0) {
-      err= hsa_queue_destroy(Sync_CommandQ);
-      Sync_CommandQ_Len = 0;
-    }
-    int i;
-    for( i=0 ; i<SNK_MAX_STREAMS ; i++ ) {
-       if(Stream_CommandQ_Len[i] != 0) {
-         err= hsa_queue_destroy( Stream_CommandQ[i]);
-         Stream_CommandQ_Len[i]=0;
-       }
-    }
-}
-void snack_stop_(){
-   SNACK_Stop();
-}
 
 EOF
 }
@@ -763,17 +767,17 @@ function write_kernel_template(){
 
     /*  If negative, then function call is synchronous.  */
     if ( stream_num < 0 ) { 
-       if ( Sync_CommandQ_Len == 0 )  {
+       if ( snk_Sync_CommandQ_Len == 0 )  {
           /* Query the maximum size of the queue.  */
           static unsigned int cmdQ_max_len; 
           err = hsa_agent_get_info(__CN__Agent, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &cmdQ_max_len);
           ErrorCheck(Querying the agent maximum queue size, err);
           cmdQ_max_len/=16; /* Leave room for other queues */
-          err = hsa_queue_create(__CN__Agent, cmdQ_max_len, HSA_QUEUE_TYPE_MULTI, NULL, NULL, UINT32_MAX, UINT32_MAX, &Sync_CommandQ);
+          err = hsa_queue_create(__CN__Agent, cmdQ_max_len, HSA_QUEUE_TYPE_MULTI, NULL, NULL, UINT32_MAX, UINT32_MAX, &snk_Sync_CommandQ);
           ErrorCheck(Creating the synchronous queue, err);
-          Sync_CommandQ_Len = cmdQ_max_len;
+          snk_Sync_CommandQ_Len = cmdQ_max_len;
        }
-       dispatch_kernel_sync(Sync_CommandQ,
+       dispatch_kernel_sync(snk_Sync_CommandQ,
           _KN__Kernel_Object,karg_ptr,_KN__Private_Segment_Size, group_base, lparm);
 
     } else { 

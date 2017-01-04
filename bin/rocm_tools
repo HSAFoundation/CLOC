@@ -7,7 +7,7 @@
 #  TODO: Add Python, boost,  Kokkos, HcBlas, HcSparse
 #  Please contact Greg if you want your HSA tool added to this list
 #
-PROGVERSION=1.3.0
+PROGVERSION=1.3.2
 #
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -243,7 +243,7 @@ else
 fi
 
 hsaila_name="HSAIL/Brig Assember"
-fname="/opt/rocm/hcc-hsail/HSAILasm/HSAILasm"
+fname="/opt/rocm/hlc3.2/bin/HSAILasm"
 if [ -f $fname ] ; then
    hsaila_ver=`$fname -version | grep Version | cut -d" " -f4`
    day=`ls -l --time-style +%Y-%m-%d $fname | cut -d" " -f6`
