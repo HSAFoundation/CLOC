@@ -61,6 +61,7 @@ function usage(){
 
    Options without values:
     -h        Print this help message
+    -version  Print the version of mymcpu and mygpu
 
    Options with values:
     -getgpuname   <codename>  Convert <codename> to gpu name. 
