@@ -5,7 +5,7 @@
 #
 # Written by Greg Rodgers Gregory.Rodgers@amd.com
 
-PROGVERSION=1.3.2
+PROGVERSION=1.3.3
 
 # Copyright (c) 2016 ADVANCED MICRO DEVICES, INC.  
 # 
@@ -84,21 +84,25 @@ function version(){
 # HELP! TODO: Lots more options to add for both amd and nvidia
 function code2gpu(){ 
    case "$1" in 
-      "gcn_700") gpuname="gcn_700"
+      "gfx700")  gpuname="gfx700"
       ;;
-      "kaveri")  gpuname="gcn_700"
+      "kaveri")  gpuname="gfx700"
       ;;
-      "gcn_701") gpuname="gcn_701"
+      "gfx701")  gpuname="gfx701"
       ;;
-      "hawaii")  gpuname="gcn_701"
+      "hawaii")  gpuname="gfx701"
       ;;
-      "gcn_801") gpuname="gcn_801"
+      "gfx801")  gpuname="gfx801"
       ;;
-      "carrizo") gpuname="gcn_801"
+      "carrizo") gpuname="gfx801"
       ;;
-      "gcn_803") gpuname="gcn_803"
+      "gfx802")  gpuname="gfx802"
       ;;
-      "fiji")    gpuname="gcn_803"
+      "tonga")   gpuname="gfx802"
+      ;;
+      "gfx803")  gpuname="gfx803"
+      ;;
+      "fiji")    gpuname="gfx803"
       ;;
       "sm_30")   gpuname="sm_30"
       ;;
@@ -118,13 +122,15 @@ function code2gpu(){
 # HELP! TODO: Lots more options to add for both amd and nvidia
 function gpu2code(){ 
    case "$1" in 
-      "gcn_700") codename="kaveri"
+      "gfx700") codename="kaveri"
       ;;
-      "gcn_701") codename="hawaii"
+      "gfx701") codename="hawaii"
       ;;
-      "gcn_801") codename="carrizo"
+      "gfx801") codename="carrizo"
       ;;
-      "gcn_803") codename="fiji"
+      "gfx802") codename="tonga"
+      ;;
+      "gfx803") codename="fiji"
       ;;
       "sm_50") codename="gtx980"
       ;;
