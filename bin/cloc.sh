@@ -265,8 +265,10 @@ if [ $VV ]  ; then
    VERBOSE=true
 fi
 
-BCFILES="$LIBGCN/$LC_MCPU/lib/opencl.amdgcn.bc"
+BCFILES=""
+BCFILES="$BCFILES $LIBGCN/$LC_MCPU/lib/opencl.amdgcn.bc"
 BCFILES="$BCFILES $LIBGCN/$LC_MCPU/lib/ockl.amdgcn.bc"
+BCFILES="$BCFILES $LIBGCN/$LC_MCPU/lib/ocml.amdgcn.bc"
 BCFILES="$BCFILES $LIBGCN/$LC_MCPU/lib/irif.amdgcn.bc"
 #LINKOPTS="-Xclang -mlink-bitcode-file -Xclang $LIBGCN/lib/libamdgcn.$LC_MCPU.bc"
 
