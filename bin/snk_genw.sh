@@ -603,11 +603,13 @@ status_t __CN__InitContext(){
     size_t size = 0;
     while(getdelim(&arg, &size, 0, cpuinfo) != -1) { };
     const char* m48="model		: 48";
+    const char* m56="model		: 56";
     const char* m96="model		: 96";
     const char* f21="cpu family	: 21";
     model="fiji"; /* Default is fiji card,  if not kaveri or carrizo */
     if ( strstr(arg,f21) != NULL ) {  /* Assume non AMD chips are using a fiji card */
        if( strstr(arg,m48) != NULL ) model="kaveri";
+       else if( strstr(arg,m56) != NULL ) model="kaveri";
        else if( strstr(arg,m96) != NULL ) model="carrizo";
     }
     free(arg);
